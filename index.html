@@ -7,6 +7,7 @@
 <style>
 /* 六级精读 · 样式 */
 :root {
+  --topbar-h: 54px;
   --ink: #1c2333;
   --ink-2: #5a6478;
   --ink-3: #8b94a7;
@@ -406,6 +407,49 @@ body.no-scroll-body {
   margin-top: 18px;
 }
 .modal-tip { font-size: 12px; color: var(--ink-3); margin-top: 12px; line-height: 1.7; }
+
+/* 段落内句子的迷你按钮（译 / 🔊） */
+.sent.inline .tr-mini,
+.sent.inline .spk-wrap {
+  display: inline-block;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 3px;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0;
+  transition: .15s;
+  font-family: inherit;
+  user-select: none;
+}
+.sent.inline:hover .tr-mini,
+.sent.inline:hover .spk-wrap { opacity: 1; }
+.sent.inline .tr-mini:hover,
+.sent.inline .spk-wrap:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* 手机上按钮常显（没有 hover） */
+@media (max-width: 640px) {
+  .sent.inline .tr-mini,
+  .sent.inline .spk-wrap {
+    opacity: .75;
+    font-size: 11px;
+    padding: 3px 7px;
+    margin-left: 4px;
+  }
+}
+
+/* 段落内的译文加载/失败提示 */
+.tr-loading { color: var(--ink-3); font-style: italic; }
+.tr-fail { color: var(--danger, #b3342a); font-size: 12.5px; }
 
 /* ---------- 语音朗读 ---------- */
 .speak-btn {
@@ -1141,10 +1185,40 @@ body.no-scroll-body {
 .rv-wrong-sent .w { cursor: pointer; border-radius: 3px; padding: 0 1px; }
 .rv-wrong-sent .w:hover { background: #dbe6ff; }
 
+/* ---------- 通用确认对话框 ---------- */
+.confirm-msg {
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  margin-bottom: 6px;
+}
+
+/* 更新按钮上的红点 */
+.btn.has-update {
+  position: relative;
+  border-color: var(--star);
+  color: var(--star);
+}
+.btn.has-update::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e5484d;
+  box-shadow: 0 0 0 2px #fff;
+}
+
 /* ---------- 导入页 ---------- */
 .welcome {
   position: fixed;
-  inset: 54px 0 0;
+  top: var(--topbar-h, 54px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: var(--bg);
   display: flex;
   align-items: center;
@@ -1241,6 +1315,7 @@ body.no-scroll-body {
     top: 0;
     overflow: visible;
   }
+  :root { --topbar-h: 52px; }
   .brand { font-size: 15px; }
   .brand .sub { display: none; }
   .topbar-full { display: none !important; }
@@ -1492,6 +1567,7 @@ body.no-scroll-body {
     <p>支持 PDF / DOCX / TXT / Markdown<br>内容在本地解析，不会上传到任何服务器</p>
     <button class="btn primary" id="btnPick" style="padding:10px 26px;font-size:14.5px">选择文件</button>
     <div class="hint">也可以直接把文件拖到这里</div>
+    <button class="btn ghost" id="btnSkipWelcome" style="margin-top:14px;font-size:12.5px">跳过，直接进入</button>
   </div>
 </div>
 
@@ -1502,7 +1578,7 @@ body.no-scroll-body {
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.0.1';</script>
+<script>window.__APP_VERSION__ = '1.0.4';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -2333,10 +2409,15 @@ function renderDoc(blocks) {
         const g = globalSentIdx++;
         S.flat.push({ g, bi, si, text: sent });
         const isLast = si === b.sentences.length - 1;
-        html += `<span class="sent inline" data-g="${g}">${tokenizeText(sent)}</span>`;
+        // 每句自带朗读按钮（悬停显示）
+        html += `<span class="sent inline" data-g="${g}">` +
+                tokenizeText(sent) +
+                `<button class="tr-mini" data-g="${g}" title="翻译这句">译</button>` +
+                `<span class="spk-wrap" data-speak="${esc(sent)}" title="朗读这句">🔊</span>` +
+                `</span>`;
         if (!isLast) html += ' ';
       });
-      html += `<button class="spk-inline para" data-speak="${esc(b.sentences.join(' '))}" title="朗读整段">🔊</button>`;
+      html += `<button class="spk-inline para" data-speak="${esc(b.sentences.join(' '))}" title="朗读整段">🔊整段</button>`;
       html += '</p>';
       html += `<div class="para-tr" data-tr-for="${bi}" hidden></div>`;
     } else {
@@ -2377,11 +2458,139 @@ function bindReader() {
       e.preventDefault();
       e.stopPropagation();
       translateOne(parseInt(trBtn.dataset.g, 10));
+      return;
+    }
+
+    // 段落内句子的迷你翻译按钮
+    const mini = e.target.closest('.tr-mini');
+    if (mini) {
+      e.preventDefault();
+      e.stopPropagation();
+      translateOne(parseInt(mini.dataset.g, 10));
+      return;
     }
   });
 }
 
-// ==================== 词卡 ====================
+// ==================== 导航栈（支持手机返回键 / 返回上一个词） ====================
+// 每次打开新页面或新词，压入栈；按返回键就弹出栈顶恢复上一步。
+
+S.nav = { stack: [], basePushed: false };
+
+function navPush(entry) {
+  S.nav.stack.push(entry);
+  // 用 history 让手机返回键有可回退的层级
+  try {
+    history.pushState({ nav: S.nav.stack.length }, '');
+  } catch (e) {}
+}
+
+function navPop() {
+  if (S.nav.stack.length <= 1) return null;
+  S.nav.stack.pop();
+  return S.nav.stack[S.nav.stack.length - 1];
+}
+
+// 处理系统返回键
+function initNavBack() {
+  // 1) 浏览器 / WebView 的 popstate
+  window.addEventListener('popstate', () => {
+    if (handleBack()) {
+      // 还有可回退的层级，补一个 history 保持深度
+      try { history.pushState({ nav: S.nav.stack.length }, ''); } catch (e) {}
+    }
+  });
+
+  // 2) Capacitor 原生返回键（Android）
+  const CapApp = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App);
+  if (CapApp && CapApp.addListener) {
+    CapApp.addListener('backButton', () => {
+      if (handleBack()) {
+        // 处理了，不退出
+      } else {
+        // 栈空 → 真的退出
+        try { CapApp.exitApp(); } catch (e) { history.back(); }
+      }
+    });
+  }
+}
+
+// 返回上一级；返回 true 表示已处理（拦住了）
+function handleBack() {
+  // 优先级 1：词卡浮层（手机上先关掉）
+  if (isMobile() && $('wordPanel') && $('wordPanel').classList.contains('sheet-open')) {
+    // 如果栈里有上一个词，回到它；否则关闭
+    const prev = navPop();
+    if (prev && prev.type === 'word') {
+      restoreNavEntry(prev);
+      return true;
+    }
+    closeWordSheet();
+    return true;
+  }
+
+  // 优先级 2：有打开的全屏子页面（生词本 / 复习 / 文档库）
+  if (S.wbOpen || $('wordbook') && $('wordbook').classList.contains('show')) {
+    const prev = navPop();
+    if (prev && prev.type === 'view') {
+      restoreNavEntry(prev);
+      return true;
+    }
+    // 回到阅读页
+    $('wordbook').classList.remove('show');
+    $('reader').style.display = '';
+    const p = document.querySelector('.panel');
+    if (p) p.style.display = '';
+    S.wbOpen = false;
+    return true;
+  }
+
+  // 优先级 3：对话框 / 确认框
+  const modal = $('rangeDlg');
+  if (modal && modal.classList.contains('show')) { modal.classList.remove('show'); return true; }
+  const cf = $('confirmDlg');
+  if (cf && cf.classList.contains('show')) { cf.classList.remove('show'); return true; }
+
+  // 优先级 4：词卡浮层已关闭，但栈里有上一个词
+  const prev = navPop();
+  if (prev) {
+    restoreNavEntry(prev);
+    return true;
+  }
+
+  return false;   // 无法处理 → 允许退出
+}
+
+// 恢复某个栈条目
+function restoreNavEntry(entry) {
+  if (entry.type === 'word') {
+    showWordCard(entry.word, entry.display || entry.word);
+    entry.noPush = true;      // 避免递归压栈
+    if (isMobile()) openWordSheet();
+    return;
+  }
+  if (entry.type === 'view') {
+    if (entry.view === 'wordbook') {
+      renderWordbook();
+      $('wordbook').classList.add('show');
+      $('reader').style.display = 'none';
+      const p = document.querySelector('.panel');
+      if (p) p.style.display = 'none';
+      S.wbOpen = true;
+    } else if (entry.view === 'review') {
+      startReviewUI();
+    } else if (entry.view === 'library') {
+      showLibrary();
+    }
+  }
+}
+
+// 手机上把词卡面板从底部弹出
+function isMobile() {
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+// 点击正文里的单词
 function selectWord(el) {
   const word = el.dataset.w;
   if (S.activeEl) S.activeEl.classList.remove('active');
@@ -2390,11 +2599,7 @@ function selectWord(el) {
   S.activeWord = word;
   showWordCard(word, el.textContent);
   openWordSheet();
-}
-
-// 手机上把词卡面板从底部弹出
-function isMobile() {
-  return window.matchMedia('(max-width: 640px)').matches;
+  navPush({ type: 'word', word: word, display: el.textContent });
 }
 
 function openWordSheet() {
@@ -2554,6 +2759,10 @@ function bindRelationClicks(root) {
     el.addEventListener('click', ev => {
       ev.stopPropagation();
       const w = el.dataset.rel;
+      // 记录当前词，方便返回
+      if (S.activeWord) {
+        navPush({ type: 'word', word: S.activeWord, display: S.activeWord });
+      }
       // 在原文里找同一个词并高亮
       const target = document.querySelector(`#docBody .w[data-w="${w}"]`);
       if (target) {
@@ -2994,11 +3203,24 @@ function itemText(g) {
 
 // ---- 单句翻译 ----
 async function translateOne(g) {
+  const item = S.flat.find(x => x.g === g);
+  if (!item) return;
   const sentEl = document.querySelector(`.sent[data-g="${g}"]`);
   if (!sentEl) return;
 
-  // 已有译文 → 收起
+  const isInline = sentEl.classList.contains('inline');
+
+  // 已有译文 → 收起 / 展开
   if (S.tr[g]) {
+    if (isInline) {
+      const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
+      const box = blk && blk.querySelector('.para-tr');
+      if (box) {
+        if (!box.hidden) { box.hidden = true; }
+        else { renderParaTr(blk, item.bi); }
+      }
+      return;
+    }
     const existing = sentEl.nextElementSibling;
     if (existing && existing.classList.contains('sent-tr')) {
       existing.remove();
@@ -3011,21 +3233,40 @@ async function translateOne(g) {
     return;
   }
 
-  const ph = document.createElement('div');
-  ph.className = 'sent-tr loading';
-  ph.textContent = '翻译中…';
-  sentEl.after(ph);
+  // 未翻译：先占位
+  let ph = null;
+  if (isInline) {
+    // 行内句子：在段落下方提示
+    const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
+    if (blk) {
+      const box = blk.querySelector('.para-tr');
+      if (box) {
+        box.hidden = false;
+        box.innerHTML = '<span class="tr-loading">翻译中…</span>';
+      }
+    }
+  } else {
+    ph = document.createElement('div');
+    ph.className = 'sent-tr loading';
+    ph.textContent = '翻译中…';
+    sentEl.after(ph);
+  }
 
   const t = await requestTranslate([itemText(g)]);
   if (t[0]) {
     S.tr[g] = t[0];
-    ph.classList.remove('loading');
-    ph.textContent = t[0];
     updateTrStats();
     persistTr();
+    renderTrFor(g, t[0]);
   } else {
-    ph.classList.remove('loading');
-    ph.textContent = '翻译失败（可能没联网或接口不可用），原文仍可正常阅读和取词。';
+    if (isInline) {
+      const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
+      const box = blk && blk.querySelector('.para-tr');
+      if (box) box.innerHTML = '<span class="tr-fail">翻译失败，可能没联网</span>';
+    } else if (ph) {
+      ph.classList.remove('loading');
+      ph.textContent = '翻译失败（可能没联网或接口不可用），原文仍可正常阅读和取词。';
+    }
   }
 }
 
@@ -3293,6 +3534,7 @@ function toggleWordbook() {
     panel.style.display = 'none';
     wb.classList.add('show');
     renderWordbook();
+    navPush({ type: 'view', view: 'wordbook' });
   } else {
     reader.style.display = '';
     panel.style.display = '';
@@ -3530,6 +3772,7 @@ async function showLibrary() {
   document.querySelector('.panel').style.display = 'none';
   S.wbOpen = true;
   $('btnWordbook').classList.remove('primary');
+  navPush({ type: 'view', view: 'library' });
 }
 
 function renderLibrary() {
@@ -3584,7 +3827,7 @@ function renderLibrary() {
     it.querySelector('[data-act="del"]').addEventListener('click', function (e) {
       e.stopPropagation();
       const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
-      if (rec && confirm('确定删除「' + rec.name + '」？')) deleteDoc(it.dataset.id);
+      if (rec) { askConfirm('删除文档', '确定删除「' + rec.name + '」？删除后无法恢复。', '删除', '取消').then(function(ok){ if (ok) deleteDoc(it.dataset.id); }); }
     });
   });
 }
@@ -3748,9 +3991,35 @@ async function fetchOnlineWord(word) {
   const text = (word || '').trim();
   if (!text) return null;
 
-  const out = { headword: text, ipa: '', meanings: [], enDefs: [], source: 'online', at: Date.now() };
+  const out = {
+    headword: text, ipa: '', meanings: [], enDefs: [],
+    source: 'online', at: Date.now(),
+    level: '', forms: [], syn: [], ant: [], examples: [], roots: [],
+  };
 
-  // ---- 源 1：有道翻译（允许跨域）→ 中文释义 ----
+  // ---- 先看本地词库有没有同根词/等级线索 ----
+  const D = S.data || { dict: {}, inflect: {} };
+  const key = text.toLowerCase();
+
+  // 等级：本地词库若收录则直接给
+  if (D.dict && D.dict[key] && D.dict[key].tags) {
+    out.level = D.dict[key].tags.join(',');
+  }
+
+  // 词形变化：反查本地 inflect 表
+  if (D.inflect) {
+    for (const form in D.inflect) {
+      if (D.inflect[form] === key) out.forms.push(form);
+    }
+    out.forms = out.forms.slice(0, 8);
+  }
+
+  // 词根词缀：从 relations.json 找
+  if (S.rel && S.rel[key] && S.rel[key].roots) {
+    out.roots = S.rel[key].roots;
+  }
+
+  // ---- 源 1：有道翻译 → 中文释义 + 音标 ----
   try {
     const r = await fetch('https://aidemo.youdao.com/trans', {
       method: 'POST',
@@ -3760,11 +4029,9 @@ async function fetchOnlineWord(word) {
     if (r.ok) {
       const j = await r.json();
       if (j.translation && j.translation.length) {
-        const zh = j.translation.join('；');
-        out.meanings.push({ zh: zh, pos: '', src: 'youdao' });
+        out.meanings.push({ zh: j.translation.join('；'), pos: '', src: 'youdao' });
       }
       if (j.speakUrl) out.audio = j.speakUrl;
-      // basic（若接口偶尔返回）
       const basic = j.basic || (j.dict && j.dict.basic);
       if (basic) {
         if (basic.phonetic) out.ipa = '/' + basic.phonetic + '/';
@@ -3776,9 +4043,9 @@ async function fetchOnlineWord(word) {
         }
       }
     }
-  } catch (e) { /* 继续尝试下一个 */ }
+  } catch (e) {}
 
-  // ---- 源 2：MyMemory（允许跨域）→ 补充释义 ----
+  // ---- 源 2：MyMemory 兜底 ----
   if (!out.meanings.length) {
     try {
       const u = 'https://api.mymemory.translated.net/get?q=' +
@@ -3794,7 +4061,7 @@ async function fetchOnlineWord(word) {
     } catch (e) {}
   }
 
-  // ---- 源 3：dictionaryapi.dev（允许跨域）→ 英英释义 + 音标 ----
+  // ---- 源 3：dictionaryapi.dev → 英英释义 + 音标 ----
   try {
     const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' +
                           encodeURIComponent(text));
@@ -3803,14 +4070,29 @@ async function fetchOnlineWord(word) {
       const e = Array.isArray(arr) ? arr[0] : null;
       if (e) {
         if (!out.ipa && e.phonetic) out.ipa = e.phonetic;
+        // 音标：优先取 phonetics 数组里有 text 的
+        if (!out.ipa && e.phonetics) {
+          const p = e.phonetics.find(x => x.text);
+          if (p) out.ipa = p.text;
+        }
+        // 英英释义 + 例句
         const defs = [];
         (e.meanings || []).forEach(m => {
           (m.definitions || []).slice(0, 2).forEach(d => {
             if (d.definition) defs.push('[' + (m.partOfSpeech || '') + '] ' + d.definition);
+            // 例句
+            if (d.example) out.examples.push(d.example);
+          });
+          // 同义词 / 反义词
+          (m.synonyms || []).slice(0, 3).forEach(s => {
+            if (!out.syn.includes(s)) out.syn.push(s);
+          });
+          (m.antonyms || []).slice(0, 3).forEach(s => {
+            if (!out.ant.includes(s)) out.ant.push(s);
           });
         });
         if (defs.length) out.enDefs = defs.slice(0, 4);
-        // 若中文释义缺失，用英文释义也保留（至少能给用户信息）
+        out.examples = out.examples.slice(0, 3);
       }
     }
   } catch (e) {}
@@ -3821,6 +4103,13 @@ async function fetchOnlineWord(word) {
 // 渲染联网查到的词条
 function renderOnlineEntry(card, key, shown, data, saved) {
   const tags = ['<span class="tag online">联网收录</span>'];
+
+  // 等级标签
+  if (data.level) {
+    data.level.split(',').forEach(t => {
+      if (t.trim()) tags.push(`<span class="tag ${esc(t.trim())}">${esc(tagLabel(t.trim()))}</span>`);
+    });
+  }
   let html = `
     <div class="cw-head">
       <div>
@@ -3848,6 +4137,39 @@ function renderOnlineEntry(card, key, shown, data, saved) {
       data.enDefs.map(d => esc(d)).join('<br>')}</div>`;
   }
 
+  // 例句
+  if (data.examples && data.examples.length) {
+    html += `<div class="cex"><div class="cex-label">例句</div>` +
+      data.examples.map(s =>
+        `<div style="margin-bottom:4px">${esc(s)}
+         <button class="speak-btn sm" data-speak="${esc(s)}" title="朗读">🔊</button></div>`
+      ).join('') + `</div>`;
+  }
+
+  // 词根词缀 / 变形 / 同义 / 反义
+  const extra = [];
+  if (data.roots && data.roots.length) {
+    extra.push(`<div class="rel-row"><span class="rel-label">词根</span>
+      <span class="rel-items">${data.roots.map(r =>
+        `<span class="rel-root">${esc(r.root)}<i>${esc(r.meaning || '')}</i></span>`).join('')}</span></div>`);
+  }
+  if (data.forms && data.forms.length) {
+    extra.push(`<div class="rel-row"><span class="rel-label">变形</span>
+      <span class="rel-items">${data.forms.map(w =>
+        `<span class="rel-w">${esc(w)}</span>`).join('')}</span></div>`);
+  }
+  if (data.syn && data.syn.length) {
+    extra.push(`<div class="rel-row"><span class="rel-label">同义词</span>
+      <span class="rel-items">${data.syn.map(w =>
+        `<span class="rel-w" data-rel="${esc(w)}">${esc(w)}</span>`).join('')}</span></div>`);
+  }
+  if (data.ant && data.ant.length) {
+    extra.push(`<div class="rel-row"><span class="rel-label">反义词</span>
+      <span class="rel-items">${data.ant.map(w =>
+        `<span class="rel-w ant" data-rel="${esc(w)}">${esc(w)}</span>`).join('')}</span></div>`);
+  }
+  if (extra.length) html += '<div class="rel-box">' + extra.join('') + '</div>';
+
   html += `<div class="online-tip">来源：在线词典 · 已存入本地，离线可用</div>`;
 
   card.innerHTML = html;
@@ -3855,6 +4177,7 @@ function renderOnlineEntry(card, key, shown, data, saved) {
     headword: data.headword, ipa: data.ipa, tags: ['online'],
     meanings: data.meanings,
   });
+  bindRelationClicks(card);
   bindSpeakButtons(card);
 }
 
@@ -3975,24 +4298,29 @@ function compareVersion(a, b) {
 }
 
 (function applyHotUpdate() {
-  try {
-    const meta = localStorage.getItem(S.update.metaKey);
-    if (!meta) return;
-    const m = JSON.parse(meta);
-    if (!m || !m.version) return;
-    if (compareVersion(m.version, S.update.currentVersion) <= 0) return;
-
-    const html = localStorage.getItem(S.update.storageKey);
-    if (!html || html.length < 1000) return;
-
-    // 用本地新版覆盖当前文档（保留同一个 localStorage 作用域）
-    document.open();
-    document.write(html);
-    document.close();
-  } catch (e) {
-    console.warn('热更新应用失败，使用内置版本', e);
-  }
+  // 热更新由 checkHotUpdateAtBoot 异步处理（见 boot 末尾）
 })();
+
+// 启动时应用热更新：从 IndexedDB 取出新 HTML，用 blob 方式替换页面
+async function applyHotUpdateAtBoot() {
+  try {
+    const rec = await dbGet('meta', 'hotupdate');
+    if (!rec || !rec.html || rec.html.length < 1000) return false;
+    if (compareVersion(rec.version || '0', S.update.currentVersion) <= 0) return false;
+
+    // 已应用过就不再重复
+    if (rec.applied === rec.version) return false;
+
+    // 直接替换文档内容
+    document.open();
+    document.write(rec.html);
+    document.close();
+    return true;
+  } catch (e) {
+    console.warn('热更新应用失败', e);
+    return false;
+  }
+}
 
 // 启动时：如果有已下载的新版本，优先用它
 // （实现方式：App 启动时读 localStorage，若存在则用主从替换的 HTML）
@@ -4009,6 +4337,37 @@ function checkUpdateOnBoot() {
   }, 3000);
 }
 
+// ============ 通用确认对话框（替代 confirm，手机 WebView 更可靠） ============
+function askConfirm(title, message, okText, cancelText) {
+  return new Promise(resolve => {
+    let dlg = document.getElementById('confirmDlg');
+    if (!dlg) {
+      dlg = document.createElement('div');
+      dlg.id = 'confirmDlg';
+      dlg.className = 'modal';
+      document.body.appendChild(dlg);
+    }
+    dlg.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-title">${esc(title || '确认')}</div>
+        <div class="confirm-msg">${esc(message || '')}</div>
+        <div class="modal-actions">
+          <button class="btn" id="cfCancel">${esc(cancelText || '取消')}</button>
+          <button class="btn primary" id="cfOk">${esc(okText || '确定')}</button>
+        </div>
+      </div>`;
+    dlg.classList.add('show');
+
+    const finish = (v) => {
+      dlg.classList.remove('show');
+      resolve(v);
+    };
+    dlg.querySelector('#cfOk').addEventListener('click', () => finish(true));
+    dlg.querySelector('#cfCancel').addEventListener('click', () => finish(false));
+    dlg.addEventListener('click', e => { if (e.target === dlg) finish(false); });
+  });
+}
+
 // 检查更新
 async function checkUpdate(silent) {
   let manifest = null;
@@ -4016,7 +4375,13 @@ async function checkUpdate(silent) {
     try {
       const r = await fetch(url, { cache: 'no-store' });
       if (r.ok) {
-        manifest = await r.json();
+        // 用 text() 而非 json()，以便容忍 BOM / 前后杂字符
+        let txt = await r.text();
+        txt = txt.replace(/^\uFEFF/, '').trim();
+        const s = txt.indexOf('{');
+        const e = txt.lastIndexOf('}');
+        if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+        manifest = JSON.parse(txt);
         break;
       }
     } catch (e) { /* 试下个镜像 */ }
@@ -4031,9 +4396,13 @@ async function checkUpdate(silent) {
 
   if (!silent) {
     if (hasNew) {
-      if (confirm(`发现新版本 ${latest}（当前 ${S.update.currentVersion}）\n\n${manifest.notes || ''}\n\n现在下载更新吗？`)) {
-        await downloadUpdate(manifest);
-      }
+      askConfirm(
+        '发现新版本 ' + latest,
+        '当前版本 ' + S.update.currentVersion + '。' +
+          (manifest.notes ? '\n' + manifest.notes : '') +
+          '\n\n现在下载吗？',
+        '下载', '以后再说'
+      ).then(function (ok) { if (ok) downloadUpdate(manifest); });
     } else {
       toast('已是最新版本 ' + S.update.currentVersion);
     }
@@ -4061,18 +4430,41 @@ async function downloadUpdate(manifest) {
     }
     if (!html || html.length < 1000) throw new Error('下载失败');
 
-    localStorage.setItem(S.update.storageKey, html);
-    localStorage.setItem(S.update.metaKey, JSON.stringify({
-      version: manifest.version, at: Date.now(), notes: manifest.notes || '',
-    }));
+    // 优先存 IndexedDB（容量大，能放 5MB 的 HTML）
+    let stored = false;
+    try {
+      await dbPut('meta', {
+        k: 'hotupdate',
+        version: manifest.version,
+        html: html,
+        at: Date.now(),
+        notes: manifest.notes || '',
+        applied: null,
+      });
+      stored = true;
+    } catch (e) {
+      // 退路：localStorage（容量可能不够）
+      try {
+        localStorage.setItem(S.update.storageKey, html);
+        localStorage.setItem(S.update.metaKey, JSON.stringify({
+          version: manifest.version, at: Date.now(), notes: manifest.notes || '',
+        }));
+        stored = true;
+      } catch (e2) {
+        throw new Error('存储空间不足，无法保存更新');
+      }
+    }
+
+    if (!stored) throw new Error('保存失败');
 
     mask(false);
-    if (confirm('更新已下载完成。\n\n现在重启以使用新版本吗？')) {
-      location.reload();
-    }
+    askConfirm('更新已下载', '新版本已保存。现在重启以使用新版本吗？', '立即重启', '稍后').then(function(ok){
+      if (ok) location.reload();
+      else toast('下次打开会自动使用新版本');
+    });
   } catch (e) {
     mask(false);
-    toast('更新下载失败：' + e.message, true);
+    toast('更新下载失败：' + (e.message || '未知错误'), true);
   }
 }
 
@@ -4082,10 +4474,10 @@ function showUpdateBadge(version, manifest) {
   if (!btn) return;
   btn.classList.add('has-update');
   btn.title = '有新版本 ' + version;
-  btn.addEventListener('click', async () => {
-    if (confirm(`发现新版本 ${version}\n\n${manifest.notes || ''}\n\n现在下载吗？`)) {
-      await downloadUpdate(manifest);
-    }
+  btn.addEventListener('click', function () {
+    askConfirm('发现新版本 ' + version,
+      (manifest.notes || '') + '\n\n现在下载吗？', '下载', '取消')
+      .then(function (ok) { if (ok) downloadUpdate(manifest); });
   });
 }
 
@@ -4104,8 +4496,7 @@ function bindUpdateButton() {
   if (btn) {
     btn.addEventListener('click', () => checkUpdate(false));
   }
-}
-S.review = null;
+}S.review = null;
 
 // 按词数多少生成合适的数量档位
 function buildCountOptions(total) {
@@ -4130,6 +4521,7 @@ function startReviewUI() {
   wb.classList.add('show');
   S.wbOpen = true;
   renderReviewSetup();
+  navPush({ type: 'view', view: 'review' });
 }
 
 function reviewPool() {
@@ -4535,7 +4927,7 @@ function beginReview() {
 function bindReviewNav(st) {
   const quit = $('rvQuit');
   if (quit) quit.addEventListener('click', () => {
-    if (confirm('结束本次复习？')) renderReviewResult();
+    askConfirm('结束复习', '确定结束本次复习？', '结束', '继续').then(function(ok){ if (ok) renderReviewResult(); });
   });
   const next = $('rvNextBtn');
   if (next) next.addEventListener('click', () => {
@@ -4580,7 +4972,7 @@ function renderReviewCard() {
 
       <div class="rv-question">
         ${memTag(mem, q)}
-        <div class="rv-word">${esc(q.prompt)}</div>
+        <div class="rv-word">${esc(q.prompt)}<button class="speak-btn rv-speak" data-speak="${esc(q.item.word)}" title="朗读">🔊</button></div>
         ${q.sub ? `<div class="rv-ipa">${esc(q.sub)}</div>` : ''}
         <div class="rv-hint">${S.review.mode === 'en2zh' ? '选出正确的中文释义' : '选出对应的英文单词'}</div>
       </div>
@@ -4595,6 +4987,7 @@ function renderReviewCard() {
     </div>`;
 
   bindReviewNav(st);
+  bindSpeakButtons(document.getElementById(wordbook));
   if (q.revealed) restoreAnswerState();
 
   const opts = $('rvOpts');
@@ -4857,7 +5250,7 @@ function renderCardMode() {
   const stage = q.cardStage;
 
   // 卡片模式固定「英译中」：正面只出英文单词，背面给中文释义
-  const frontHtml = `<div class="rv-word">${esc(q.item.word)}</div>
+  const frontHtml = `<div class="rv-word">${esc(q.item.word)}<button class="speak-btn rv-speak" data-speak="${esc(q.item.word)}" title="朗读">🔊</button></div>
        <div class="rv-ipa">${esc(q.item.ipa || '')}</div>`;
 
   wb.innerHTML = `
@@ -4902,6 +5295,7 @@ function renderCardMode() {
     </div>`;
 
   bindReviewNav(st);
+  bindSpeakButtons(document.getElementById(wordbook));
 
   const k = $('btnKnown');
   if (k) k.addEventListener('click', () => cardDecide(true));
@@ -5204,10 +5598,36 @@ async function boot() {
   await loadDocList();
   await loadOnlineDict();
 
+  // 若有已下载的更新，立即切换（会替换整个页面）
+  const switched = await applyHotUpdateAtBoot();
+  if (switched) return;   // 页面已被新版本接管
+
   // 启动时检查热更新（后台静默，不打扰）
   checkUpdateOnBoot();
 
   mask(false);
+
+  // 关键：有历史数据就不弹欢迎页，直接能点生词本/复习/文档
+  if (S.docList && S.docList.length > 0) {
+    $('welcome').classList.add('hide');
+    // 自动打开最近一份文档
+    try {
+      const last = S.docList[0];
+      if (last && last.blocks && last.blocks.length) {
+        S.docId = last.id;
+        S.doc = { id: last.id, name: last.name, ext: last.ext, stats: last.stats };
+        restoreTr();
+        renderDoc(last.blocks);
+        $('docName').textContent = last.name + ' · ' + last.stats.sentences + ' 句';
+      }
+    } catch (e) { console.warn('自动打开上次文档失败', e); }
+  } else if (S.words && S.words.size > 0) {
+    // 没文档但有生词本，也隐藏欢迎页
+    $('welcome').classList.add('hide');
+    $('docBody').innerHTML =
+      '<div class="empty"><span class="big">📖</span>' +
+      '还没有打开的文档<br>点右上角「导入」选一份真题，或用「文档」看已导入的</div>';
+  }
 
   if (memoryFallback) {
     toast('注意：本浏览器无法使用本地数据库，改动只保存在当前页面内', true);
@@ -5216,12 +5636,29 @@ async function boot() {
   // 调试出口（自测用，不影响正常使用）
   window.__S = S;
   window.__findEntry = findEntry;
+  window.__fetchOnlineWord = fetchOnlineWord;
+  window.__lookupOnline = lookupOnline;
   window.__renderDoc = renderDoc;
   window.__saveDoc = saveDoc;
   window.__showLibrary = showLibrary;
   window.__setEditMode = setEditMode;
+  window.__handleBack = handleBack;
+  window.__navPush = navPush;
 
   $('btnPick').addEventListener('click', () => $('fileInput').click());
+
+  // 跳过欢迎页：直接进入，可先用生词本/复习/文档
+  const skipBtn = $('btnSkipWelcome');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+      $('welcome').classList.add('hide');
+      if (!S.flat.length) {
+        $('docBody').innerHTML =
+          '<div class="empty"><span class="big">📖</span>' +
+          '还没有打开文档<br>点右上角「导入」选一份真题</div>';
+      }
+    });
+  }
   $('btnOpen').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', e => {
     const f = e.target.files[0];
@@ -5249,6 +5686,9 @@ async function boot() {
 
   // ---- 手机端：更多菜单 + 词卡浮层 ----
   bindMobileUI();
+
+  // 初始化返回栈（手机返回键 / 返回上一步）
+  initNavBack();
 
   // 翻译按钮
   const btnAll = $('btnTranslateAll');
