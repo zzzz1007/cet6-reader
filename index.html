@@ -52,6 +52,31 @@ button { font-family: inherit; cursor: pointer; }
   position: sticky;
   top: 0;
   z-index: 50;
+  overflow: visible;
+}
+
+/* 桌面端按钮组 */
+.topbar-full {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 手机端「更多」菜单 */
+.topbar-more-btn {
+  display: none;
+  font-size: 16px;
+  padding: 5px 11px;
+}
+.topbar-more {
+  display: none;
+}
+
+/* 浮层打开时锁定背景滚动 */
+body.no-scroll-body {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
 
 .brand { font-weight: 700; font-size: 16px; letter-spacing: .3px; white-space: nowrap; }
@@ -1189,11 +1214,208 @@ button { font-family: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
-  .main { flex-direction: column; height: auto; }
-  .panel { width: 100%; flex: none; border-left: none; border-top: 1px solid var(--line); max-height: 55vh; }
+  .main { flex-direction: column; height: auto; min-height: 0; }
   .reader { padding: 20px 16px 60px; }
   .topbar { padding: 0 12px; gap: 8px; }
   .docname { display: none; }
+}
+
+/* ============================================================
+ * 手机端专用（<= 640px）
+ * ============================================================ */
+@media (max-width: 640px) {
+
+  /* ---- 全局：禁止横向滚动 ---- */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  * { max-width: 100%; }
+
+  /* ---- 顶栏：只留核心按钮，其余收进菜单 ---- */
+  .topbar {
+    height: 52px;
+    padding: 0 10px;
+    gap: 6px;
+    position: sticky;
+    top: 0;
+    overflow: visible;
+  }
+  .brand { font-size: 15px; }
+  .brand .sub { display: none; }
+  .topbar-full { display: none !important; }
+  .topbar .btn { padding: 6px 10px; font-size: 12.5px; }
+  .topbar-more-btn { display: inline-flex !important; }
+  .topbar-more {
+    position: fixed;
+    top: 56px;
+    right: 8px;
+    left: auto;
+    width: min(240px, calc(100vw - 16px));
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(20,30,60,.18);
+    padding: 8px;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .topbar-more[hidden] { display: none; }
+  .topbar-more .btn {
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start;
+    padding: 9px 12px;
+    font-size: 13.5px;
+  }
+  .more-check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  /* ---- 阅读区：充分利用宽度 ---- */
+  .reader {
+    padding: 14px 14px 80px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .doc-body {
+    max-width: 100%;
+    font-size: 15px;
+  }
+  .para-flow {
+    font-size: 15.5px;
+    line-height: 1.85;
+    text-align: left;      /* 手机上两端对齐会拉出怪空隙 */
+    word-break: break-word;
+  }
+  .blk.option { margin-left: 14px; }
+  .rw-pct { font-size: 12px; }
+
+  /* ---- 词卡：改成底部浮层 ---- */
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 auto;          /* 覆盖基础规则的 flex: 0 0 372px */
+    height: 62vh;
+    max-height: 62vh;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -6px 28px rgba(20,30,60,.16);
+    z-index: 210;
+    transform: translateY(102%);
+    transition: transform .24s cubic-bezier(.22,.8,.3,1);
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.sheet-open { transform: translateY(0); }
+
+  .sheet-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 22, 36, .34);
+    z-index: 200;
+    display: none;
+  }
+  .sheet-mask.show { display: block; }
+
+  .panel-close-bar {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px 0;
+  }
+  .panel-close {
+    border: none;
+    background: #f0f2f7;
+    color: var(--ink-2);
+    font-size: 15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .panel-close:hover { background: #e5e8f0; }
+
+  .card {
+    padding: 6px 18px 26px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .cw-word { font-size: 23px; }
+  .panel-empty { flex: 1; padding: 20px; }
+  .panel-empty .big { font-size: 32px; }
+
+  /* ---- 生词本 / 复习 / 文档库：全宽 ---- */
+  .wb { padding: 16px 14px 60px; width: 100%; }
+  .rv { padding: 16px 14px 60px; width: 100%; }
+  .lib { padding: 16px 14px 60px; }
+
+  .wb-head, .rv-head, .lib-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .wb-title, .rv-title, .lib-title { font-size: 18px; }
+  .wb-search { width: 100%; order: 9; }
+
+  .wb-item { padding: 11px 13px; }
+  .wb-word { font-size: 15.5px; }
+
+  /* ---- 复习：卡片模式适配 ---- */
+  .rv-cardshell { padding: 20px 16px 16px; }
+  .rv-cardface .rv-word { font-size: 28px; }
+  .rv-options { grid-template-columns: 1fr; }
+  .rv-cardbtns { flex-direction: column; }
+  .rv-cardbtns .btn { width: 100%; min-width: 0; }
+  .rv-result-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* ---- 朗读进度条 ---- */
+  .reader-bar {
+    top: 52px;
+    padding: 6px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .rb-text { display: none; }   /* 小屏不显示当前句子预览 */
+
+  /* ---- 对话框 ---- */
+  .modal-box {
+    width: calc(100vw - 24px);
+    padding: 18px 16px;
+    max-height: 84vh;
+    overflow-y: auto;
+  }
+  .modal-row input[type=number] { width: 64px; }
+
+  /* ---- 欢迎页 ---- */
+  .drop { padding: 36px 22px; }
+  .welcome { padding: 16px; }
+
+  /* ---- 导入按钮文字精简 ---- */
+  #btnOpen { font-size: 12.5px; }
+}
+
+/* 桌面端隐藏手机菜单 */
+@media (min-width: 641px) {
+  .topbar-full { display: flex; align-items: center; gap: 8px; }
+  .topbar-more-btn { display: none !important; }
+  .topbar-more { display: none !important; }
+  .panel-close-bar { display: none; }
+  .sheet-mask { display: none !important; }
 }
 
 </style>
@@ -1204,37 +1426,62 @@ button { font-family: inherit; cursor: pointer; }
   <div class="brand">六级<span>精读</span></div>
   <div class="docname" id="docName"></div>
   <div class="spacer"></div>
-  <span class="tr-stats" id="trStats"></span>
-  <label class="opt-toggle" title="勾选后连选项行也翻译">
-    <input type="checkbox" id="chkOptions"> 选项
-  </label>
-  <button class="btn ghost" id="btnToggleTr">显示译文</button>
-  <button class="btn" id="btnReadAll" title="从头朗读全文">🔊 全文朗读</button>
-  <button class="btn" id="btnReadRange" title="朗读选中范围">🔊 范围</button>
-  <button class="btn" id="btnTranslatePage" title="只翻译当前屏幕上看到的句子">本屏翻译</button>
-  <button class="btn primary" id="btnTranslateAll" title="翻译全文">全文翻译</button>
+
+  <!-- 桌面端显示的完整按钮组 -->
+  <div class="topbar-full">
+    <span class="tr-stats" id="trStats"></span>
+    <label class="opt-toggle" title="勾选后连选项行也翻译">
+      <input type="checkbox" id="chkOptions"> 选项
+    </label>
+    <button class="btn ghost" id="btnToggleTr">显示译文</button>
+    <button class="btn" id="btnReadAll" title="从头朗读全文">🔊 全文朗读</button>
+    <button class="btn" id="btnReadRange" title="朗读选中范围">🔊 范围</button>
+    <button class="btn" id="btnTranslatePage" title="只翻译当前屏幕上看到的句子">本屏翻译</button>
+    <button class="btn primary" id="btnTranslateAll" title="翻译全文">全文翻译</button>
+    <button class="btn" id="btnDocs">文档</button>
+    <button class="btn" id="btnEdit">编辑</button>
+    <button class="btn primary" id="btnSaveAs" style="display:none">另存为</button>
+    <button class="btn" id="btnUpdate" title="检查更新">⟳ 更新</button>
+  </div>
+
+  <!-- 核心按钮：桌面和手机都显示 -->
   <button class="btn primary" id="btnWordbook">生词本 <span id="wbCount">0</span></button>
   <button class="btn" id="btnReview">复习</button>
-  <button class="btn" id="btnDocs">文档</button>
-  <button class="btn" id="btnEdit">编辑</button>
-  <button class="btn" id="btnUpdate" title="检查更新">⟳ 更新</button>
-  <button class="btn primary" id="btnSaveAs" style="display:none">另存为</button>
-  <button class="btn" id="btnOpen">导入文档</button>
+  <button class="btn primary" id="btnOpen">导入</button>
+
+  <!-- 手机端「更多」菜单 -->
+  <button class="btn topbar-more-btn" id="btnMore" title="更多功能">☰</button>
+  <div class="topbar-more" id="moreMenu" hidden>
+    <button class="btn" data-more="readall">🔊 全文朗读</button>
+    <button class="btn" data-more="readrange">🔊 范围朗读</button>
+    <button class="btn" data-more="trpage">本屏翻译</button>
+    <button class="btn" data-more="trall">全文翻译</button>
+    <button class="btn" data-more="toggleTr">显示译文</button>
+    <button class="btn" data-more="docs">文档库</button>
+    <button class="btn" data-more="edit">编辑模式</button>
+    <button class="btn" data-more="saveas">另存为</button>
+    <button class="btn" data-more="update">⟳ 检查更新</button>
+    <label class="more-check"><input type="checkbox" id="chkOptionsM"> 选项也翻译</label>
+  </div>
+
   <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" hidden>
 </div>
-
 <div class="main">
   <div class="reader" id="reader">
     <div class="doc-body" id="docBody"></div>
   </div>
 
-  <aside class="panel">
+  <aside class="panel" id="wordPanel">
+    <div class="panel-close-bar">
+      <button class="panel-close" id="btnCloseCard">✕</button>
+    </div>
     <div class="panel-empty" id="panelEmpty">
       <span class="big">🔍</span>
       <div>点击文章里的任意单词<br>查看释义并收藏到生词本</div>
     </div>
     <div class="card" id="wordCard"></div>
   </aside>
+  <div class="sheet-mask" id="sheetMask" hidden></div>
   <div class="wb" id="wordbook"></div>
 </div>
 
@@ -1255,7 +1502,7 @@ button { font-family: inherit; cursor: pointer; }
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.0.0';</script>
+<script>window.__APP_VERSION__ = '1.0.1';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -2142,6 +2389,30 @@ function selectWord(el) {
   el.classList.add('active');
   S.activeWord = word;
   showWordCard(word, el.textContent);
+  openWordSheet();
+}
+
+// 手机上把词卡面板从底部弹出
+function isMobile() {
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+function openWordSheet() {
+  if (!isMobile()) return;
+  const panel = $('wordPanel');
+  const mask = $('sheetMask');
+  if (panel) panel.classList.add('sheet-open');
+  if (mask) { mask.hidden = false; mask.classList.add('show'); }
+  document.body.classList.add('no-scroll-body');
+}
+
+function closeWordSheet() {
+  const panel = $('wordPanel');
+  const mask = $('sheetMask');
+  if (panel) panel.classList.remove('sheet-open');
+  if (mask) { mask.hidden = true; mask.classList.remove('show'); }
+  document.body.classList.remove('no-scroll-body');
+  if (S.activeEl) { S.activeEl.classList.remove('active'); S.activeEl = null; }
 }
 
 function showWordCard(rawWord, displayWord) {
@@ -2289,6 +2560,7 @@ function bindRelationClicks(root) {
         target.click();
       } else {
         showWordCard(w, w);
+        openWordSheet();
       }
     });
   });
@@ -3127,6 +3399,7 @@ function renderWordbook() {
       const k = w.closest('.wb-item').dataset.k;
       const rec = S.words.get(k);
       if (rec) showWordCard(k, rec.word);
+      openWordSheet();
     });
   });
 
@@ -3139,6 +3412,7 @@ function renderWordbook() {
       el.classList.add('active');
       S.activeWord = el.dataset.w;
       showWordCard(el.dataset.w, el.textContent);
+      openWordSheet();
     });
   });
 
@@ -3596,16 +3870,91 @@ async function loadOnlineDict() {
     });
   } catch (e) {}
 }
-// ==================== 在线更新（热更新） ====================
+// ==================== 手机端 UI ====================
+function bindMobileUI() {
+  const moreBtn = $('btnMore');
+  const menu = $('moreMenu');
+
+  // 更多菜单：开合
+  if (moreBtn && menu) {
+    moreBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+    });
+    // 点空白处收起
+    document.addEventListener('click', e => {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== moreBtn) {
+        menu.hidden = true;
+      }
+    });
+  }
+
+  // 菜单项点击 → 转给对应的原按钮
+  const ACTIONS = {
+    readall: 'btnReadAll',
+    readrange: 'btnReadRange',
+    trpage: 'btnTranslatePage',
+    trall: 'btnTranslateAll',
+    toggleTr: 'btnToggleTr',
+    docs: 'btnDocs',
+    edit: 'btnEdit',
+    saveas: 'btnSaveAs',
+    update: 'btnUpdate',
+  };
+
+  if (menu) {
+    menu.querySelectorAll('[data-more]').forEach(b => {
+      b.addEventListener('click', ev => {
+        ev.stopPropagation();
+        menu.hidden = true;
+        const aid = ACTIONS[b.dataset.more];
+        const target = aid ? $(aid) : null;
+        if (target) {
+          target.click();
+        } else if (b.dataset.more === 'docs') {
+          showLibrary();
+        }
+      });
+    });
+
+    // 选项翻译开关同步
+    const chkM = $('chkOptionsM');
+    const chk = $('chkOptions');
+    if (chkM && chk) {
+      chkM.addEventListener('change', () => {
+        chk.checked = chkM.checked;
+        chk.dispatchEvent(new Event('change'));
+      });
+      chk.addEventListener('change', () => { chkM.checked = chk.checked; });
+    }
+  }
+
+  // 词卡浮层：关闭
+  const closeBtn = $('btnCloseCard');
+  if (closeBtn) closeBtn.addEventListener('click', closeWordSheet);
+
+  const mask = $('sheetMask');
+  if (mask) mask.addEventListener('click', closeWordSheet);
+
+  // 窗口尺寸变化时，若从手机切到桌面，复位浮层
+  window.addEventListener('resize', () => {
+    if (!isMobile()) closeWordSheet();
+  });
+
+  // ESC 关闭
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeWordSheet();
+  });
+}
 // 原理：从远端拉取更新清单 update.json，对比版本；有新版本就下载新的
 // index.html，存到本地后下次启动自动用它。不需要重装 App。
 
 S.update = {
-  manifestUrl: 'https://raw.githubusercontent.com/yzc-good/cet6-reader/main/update.json',
+  manifestUrl: 'https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
   mirrors: [
-    'https://raw.githubusercontent.com/yzc-good/cet6-reader/main/update.json',
-    'https://ghfast.top/https://raw.githubusercontent.com/yzc-good/cet6-reader/main/update.json',
-    'https://ghproxy.net/https://raw.githubusercontent.com/yzc-good/cet6-reader/main/update.json',
+    'https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
+    'https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
+    'https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
   ],
   currentVersion: window.__APP_VERSION__ || '1.0.0',
   storageKey: 'hotupdate:html',
@@ -4418,6 +4767,7 @@ function bindFeedbackSentence(root) {
       root.querySelectorAll('.fb-sent .w.active').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       showWordCard(el.dataset.w, el.textContent);
+      openWordSheet();
     });
   });
 
@@ -4616,6 +4966,7 @@ function bindCardSentence() {
       document.querySelectorAll('.rv-reveal-sent .w.active').forEach(x => x.classList.remove('active'));
       el.classList.add('active');
       showWordCard(word, el.textContent);
+      openWordSheet();
     });
   });
 
@@ -4662,6 +5013,7 @@ function bindOptWordClicks() {
     el.addEventListener('click', ev => {
       ev.stopPropagation();
       showWordCard(el.dataset.w, el.textContent);
+      openWordSheet();
     });
   });
 }
@@ -4740,6 +5092,7 @@ function renderReviewResult() {
   wb.querySelectorAll('.rv-wrong-sent .w').forEach(el => {
     el.addEventListener('click', () => {
       showWordCard(el.dataset.w, el.textContent);
+      openWordSheet();
     });
   });
 }
@@ -4893,6 +5246,9 @@ async function boot() {
 
   // 更新按钮
   bindUpdateButton();
+
+  // ---- 手机端：更多菜单 + 词卡浮层 ----
+  bindMobileUI();
 
   // 翻译按钮
   const btnAll = $('btnTranslateAll');
