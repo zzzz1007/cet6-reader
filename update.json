@@ -1,6 +1,6 @@
 {
-  "version": "1.0.4",
-  "notes": "新增：全局朗读（复习页也支持）；返回栈（手机返回键可回到上一个词/上一页面）；联网查词补全例句、变形、词根词缀、等级标签",
+  "version": "1.0.6",
+  "notes": "修复：取消对屏幕边缘手势的禁用，恢复正常侧滑返回；返回时优先回上一级（上一个词/上一页面），在阅读页顶部才退出",
   "url": "https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url2": "https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url3": "https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html"

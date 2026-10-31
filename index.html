@@ -1578,7 +1578,7 @@ body.no-scroll-body {
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.0.4';</script>
+<script>window.__APP_VERSION__ = '1.0.6';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -2139,6 +2139,13 @@ window.DocParser = {
 (() => {
 'use strict';
 
+// ---- 兜底：Android 返回键可能在 boot 结束前就调用，先给个安全实现 ----
+// 真正的 handleBack 定义后会覆盖它
+window.__handleBack = function () {
+  // boot 未完成时，不让退出，先拦住
+  return true;
+};
+
 // ==================== 状态 ====================
 const S = {
   data: null,        // 词库
@@ -2517,9 +2524,8 @@ function initNavBack() {
 
 // 返回上一级；返回 true 表示已处理（拦住了）
 function handleBack() {
-  // 优先级 1：词卡浮层（手机上先关掉）
+  // 优先级 1：词卡浮层
   if (isMobile() && $('wordPanel') && $('wordPanel').classList.contains('sheet-open')) {
-    // 如果栈里有上一个词，回到它；否则关闭
     const prev = navPop();
     if (prev && prev.type === 'word') {
       restoreNavEntry(prev);
@@ -2530,7 +2536,7 @@ function handleBack() {
   }
 
   // 优先级 2：有打开的全屏子页面（生词本 / 复习 / 文档库）
-  if (S.wbOpen || $('wordbook') && $('wordbook').classList.contains('show')) {
+  if (S.wbOpen || ($('wordbook') && $('wordbook').classList.contains('show'))) {
     const prev = navPop();
     if (prev && prev.type === 'view') {
       restoreNavEntry(prev);
@@ -2551,14 +2557,34 @@ function handleBack() {
   const cf = $('confirmDlg');
   if (cf && cf.classList.contains('show')) { cf.classList.remove('show'); return true; }
 
-  // 优先级 4：词卡浮层已关闭，但栈里有上一个词
+  // 优先级 4：还有上一个词，回到它
   const prev = navPop();
   if (prev) {
     restoreNavEntry(prev);
     return true;
   }
 
-  return false;   // 无法处理 → 允许退出
+  // 优先级 5：桌面模式下词卡面板开着 → 清空选中，不算退出
+  const panel = document.querySelector('.panel');
+  if (panel && panel.style.display === 'none') {
+    panel.style.display = '';
+    $('reader').style.display = '';
+    return true;
+  }
+
+  // 优先级 6：已在阅读页 —— 若还没滚到顶部，先回到顶部（自然的手感）
+  //           已经在顶部了，才允许退出
+  try {
+    const reader = 
+eader;
+    if (reader && reader.scrollTop > 8) {
+      reader.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+  } catch (e) {}
+
+  return false;
+
 }
 
 // 恢复某个栈条目
