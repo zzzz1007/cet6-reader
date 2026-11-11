@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "notes": "新增中文识别。现在遇到中文材料（中文卷子、带中文注释的外刊）可以在识别时选「中英混合」，中文也能认出来，之前这些会被当成乱码丢掉。默认仍是「英文」——纯英文内容保持原速（每页约 2.3 秒），选「中英混合」慢约 70%（每页约 4 秒）。已实测 7 页纯英文，中英混合模式下「英文被误认成中文」为 0 处，另有专门的保护逻辑兜底。另外修好了扫描件导入后英文里混中文的老问题。",
+  "version": "1.3.0",
+  "notes": "文档库可以自己改名了。每份文档后面多了一个「改名」按钮，点开就能改成你想要的名字。另外以前长标题会被截成一行省略号看不清，现在最多显示两行；还是看不全的话，点一下标题会弹出完整名字（带块数、句数、时间），也可以直接在弹窗里改名。顶栏上的文档名也会跟着更新。",
   "url": "https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url2": "https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url3": "https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html"

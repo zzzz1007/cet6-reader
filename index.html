@@ -823,9 +823,6 @@ body.no-scroll-body {
 .lib-name {
   font-weight: 600;
   font-size: 15px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .lib-badge {
   margin-left: 8px;
@@ -1660,6 +1657,95 @@ body.no-scroll-body {
 }
 .pp-radio input:checked + span { color: #2a56d6; font-weight: 600; }
 
+/* ============================================================
+ * 文档库：长标题不再被截成一个省略号
+ * ============================================================ */
+
+/* 最多显示两行，超出才截；完整名字点一下可看 */
+.lib-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.lib-name:hover { color: var(--accent); }
+
+/* ---------- 完整名字浮层 ---------- */
+.name-tip {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 22, 28, .45);
+  padding: 20px;
+}
+.name-tip.show { display: flex; }
+
+/* 白卡 */
+.name-tip > .nt-body {
+  width: min(480px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 13px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .26);
+  padding: 18px 18px 16px;
+}
+
+.name-tip .nt-name {
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #1c1f26;
+  word-break: break-word;
+  overflow-y: auto;
+  margin-bottom: 9px;
+}
+
+.name-tip .nt-meta {
+  font-size: 12.5px;
+  color: #6b7280;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f2f5;
+  margin-bottom: 12px;
+}
+
+.name-tip .nt-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- 文本输入框（重命名用） ---------- */
+.text-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  font-size: 14px;
+  border: 1.5px solid #d8dee9;
+  border-radius: 9px;
+  outline: none;
+  font-family: inherit;
+  color: #1c1f26;
+}
+.text-input:focus {
+  border-color: #3b6ef5;
+  box-shadow: 0 0 0 3px rgba(59, 110, 245, .12);
+}
+.text-hint {
+  font-size: 11.5px;
+  color: #9aa1ad;
+  margin-top: 6px;
+  min-height: 14px;
+}
+
 </style>
 </head>
 <body>
@@ -1769,12 +1855,15 @@ body.no-scroll-body {
 
 <div class="toast" id="toast"></div>
 
+<!-- 文档库：点标题看完整名字 -->
+<div class="name-tip" id="nameTip"></div>
+
 <div class="loading-mask" id="loading">
   <div class="spinner"></div>
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.2.0';</script>
+<script>window.__APP_VERSION__ = '1.3.0';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -4679,12 +4768,13 @@ function renderLibrary() {
       const ds = date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       html += '<div class="lib-item" data-id="' + esc(d.id) + '">' +
         '<div class="lib-main">' +
-          '<div class="lib-name">' + esc(d.name) +
+          '<div class="lib-name" data-act="name" title="' + esc(d.name) + '">' + esc(d.name) +
             (d.edited ? '<span class="lib-badge">已编辑</span>' : '') + '</div>' +
           '<div class="lib-meta">' + d.stats.blocks + ' 块 · ' + d.stats.sentences + ' 句 · ' + ds + '</div>' +
         '</div>' +
         '<div class="lib-actions">' +
           '<button class="btn sm" data-act="open">打开</button>' +
+          '<button class="btn sm" data-act="rename">改名</button>' +
           '<button class="btn sm" data-act="del">删除</button>' +
         '</div></div>';
     });
@@ -4712,12 +4802,74 @@ function renderLibrary() {
         S.wbOpen = false;
       });
     });
+    // 点标题：名字太长放不下时，弹出来看全名
+    it.querySelector('[data-act="name"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
+      if (rec) showFullName(rec);
+    });
+    // 改名
+    it.querySelector('[data-act="rename"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
+      if (rec) renameDoc(rec);
+    });
     it.querySelector('[data-act="del"]').addEventListener('click', function (e) {
       e.stopPropagation();
       const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
       if (rec) { askConfirm('删除文档', '确定删除「' + rec.name + '」？删除后无法恢复。', '删除', '取消').then(function(ok){ if (ok) deleteDoc(it.dataset.id); }); }
     });
   });
+}
+
+// 重命名文档
+async function renameDoc(rec) {
+  const name = await askText('重命名', rec.name, '最多 80 个字符');
+  if (name === null) return;                       // 取消
+  const v = String(name).trim().slice(0, 80);
+  if (!v) { toast('名字不能为空', true); return; }
+  if (v === rec.name) return;
+
+  rec.name = v;
+  rec.updatedAt = Date.now();
+  await dbPut('docs', rec);
+
+  // 如果改的正是当前打开的文档，同步顶栏标题
+  if (S.docId === rec.id) {
+    S.doc = S.doc || {};
+    S.doc.name = v;
+    $('docName').textContent = v + ' · ' + rec.stats.sentences + ' 句';
+  }
+  await loadDocList();
+  renderLibrary();
+  toast('已改名为「' + v + '」');
+}
+
+// 显示完整名字（长标题在列表里放不下时用）
+function showFullName(rec) {
+  const box = $('nameTip');
+  if (!box) return;
+  const date = new Date(rec.updatedAt || rec.createdAt || 0);
+  box.innerHTML =
+    '<div class="nt-body">' +
+      '<div class="nt-name">' + esc(rec.name) + '</div>' +
+      '<div class="nt-meta">' + rec.stats.blocks + ' 块 · ' + rec.stats.sentences + ' 句 · ' +
+        date.toLocaleString('zh-CN') + '</div>' +
+      '<div class="nt-foot">' +
+        '<button class="btn sm" id="ntRename">改名</button>' +
+        '<button class="btn sm primary" id="ntClose">知道了</button>' +
+      '</div>' +
+    '</div>';
+  box.classList.add('show');
+
+  $('ntClose').addEventListener('click', function () { box.classList.remove('show'); });
+  $('ntRename').addEventListener('click', function () {
+    box.classList.remove('show');
+    renameDoc(rec);
+  });
+  box.addEventListener('click', function (e) {
+    if (e.target === box) box.classList.remove('show');
+  }, { once: true });
 }
 
 // ==================== 编辑模式 ====================
@@ -5253,6 +5405,55 @@ function askConfirm(title, message, okText, cancelText) {
     dlg.querySelector('#cfOk').addEventListener('click', () => finish(true));
     dlg.querySelector('#cfCancel').addEventListener('click', () => finish(false));
     dlg.addEventListener('click', e => { if (e.target === dlg) finish(false); });
+  });
+}
+
+// 文本输入框：返回输入的字符串；取消返回 null
+function askText(title, defaultValue, hint) {
+  return new Promise(resolve => {
+    let dlg = document.getElementById('textDlg');
+    if (!dlg) {
+      dlg = document.createElement('div');
+      dlg.id = 'textDlg';
+      dlg.className = 'modal';
+      document.body.appendChild(dlg);
+    }
+    dlg.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-title">${esc(title || '输入')}</div>
+        <input class="text-input" id="txInput" type="text" maxlength="80"
+               value="${esc(defaultValue || '')}">
+        <div class="text-hint">${esc(hint || '')}</div>
+        <div class="modal-actions">
+          <button class="btn" id="txCancel">取消</button>
+          <button class="btn primary" id="txOk">确定</button>
+        </div>
+      </div>`;
+    dlg.classList.add('show');
+
+    const input = dlg.querySelector('#txInput');
+    input.value = defaultValue || '';
+    // 延迟聚焦，等动画结束，避免手机上键盘把布局顶乱
+    setTimeout(function () {
+      input.focus();
+      input.select();
+    }, 60);
+
+    const finish = (v) => {
+      dlg.classList.remove('show');
+      resolve(v);
+    };
+
+    const commit = () => finish(input.value);
+    dlg.querySelector('#txOk').addEventListener('click', commit);
+    dlg.querySelector('#txCancel').addEventListener('click', () => finish(null));
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(null); }
+    });
+    dlg.addEventListener('click', function (e) {
+      if (e.target === dlg) finish(null);
+    });
   });
 }
 
@@ -6809,6 +7010,22 @@ async function boot() {
 }
 
 boot();
+
+// 调试接口：方便自测 / 排错（不影响正常使用）
+window.__APP__ = {
+  get S() { return S; },
+  saveDoc: saveDoc,
+  dbPut: dbPut,
+  dbDel: dbDel,
+  loadDocList: loadDocList,
+  renderLibrary: renderLibrary,
+  showLibrary: showLibrary,
+  openDocById: openDocById,
+  renameDoc: renameDoc,
+  showFullName: showFullName,
+  askText: askText,
+};
+
 })();
 
 </script>
