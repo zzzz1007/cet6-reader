@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "notes": "修好了扫描件导入后英文里混中文的老问题（那种 PDF 的文字层是坏的，现在会自动重新识别成干净文字，汉字数从 1346 降到 0）。新增两个功能：1) 导入时可自己勾选要识别哪几页，只选要看的页会快很多（只识别 2 页约 4 秒）；2) 支持直接导入图片，截图、手机拍的照片都能识别成可点词的文章。",
+  "version": "1.2.0",
+  "notes": "新增中文识别。现在遇到中文材料（中文卷子、带中文注释的外刊）可以在识别时选「中英混合」，中文也能认出来，之前这些会被当成乱码丢掉。默认仍是「英文」——纯英文内容保持原速（每页约 2.3 秒），选「中英混合」慢约 70%（每页约 4 秒）。已实测 7 页纯英文，中英混合模式下「英文被误认成中文」为 0 处，另有专门的保护逻辑兜底。另外修好了扫描件导入后英文里混中文的老问题。",
   "url": "https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url2": "https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url3": "https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html"
