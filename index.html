@@ -1746,6 +1746,132 @@ body.no-scroll-body {
   min-height: 14px;
 }
 
+/* ============================================================
+ * AI 设置面板
+ * ============================================================ */
+.ai-set {
+  position: fixed;
+  inset: 0;
+  z-index: 3300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 22, 28, .5);
+  padding: 16px;
+}
+.ai-set.show { display: flex; }
+
+.ais-box {
+  width: min(480px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+  overflow: hidden;
+}
+
+.ais-head {
+  display: flex;
+  align-items: center;
+  padding: 15px 18px;
+  border-bottom: 1px solid #f0f2f5;
+}
+.ais-title { font-size: 15.5px; font-weight: 600; color: #1c1f26; flex: 1; }
+
+.ais-body {
+  padding: 16px 18px 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ais-field { margin-bottom: 15px; }
+.ais-field > label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+.ais-field select,
+.ais-field input[type="password"],
+.ais-field input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 11px;
+  font-size: 13.5px;
+  border: 1.5px solid #d8dee9;
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  color: #1c1f26;
+  background: #fff;
+}
+.ais-field select:focus,
+.ais-field input:focus {
+  border-color: #3b6ef5;
+  box-shadow: 0 0 0 3px rgba(59, 110, 245, .12);
+}
+
+.ais-keyrow { display: flex; gap: 7px; }
+.ais-keyrow input { flex: 1; min-width: 0; }
+.ais-keyrow .btn { flex: 0 0 auto; }
+
+.ais-hint {
+  font-size: 11.5px;
+  color: #9aa1ad;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.ais-test {
+  min-height: 16px;
+  font-size: 12.5px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  display: none;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.ais-test.ok {
+  display: block;
+  background: #edf9f0;
+  color: #1a7f3c;
+  border: 1px solid #b7e5c4;
+}
+.ais-test.bad {
+  display: block;
+  background: #fdf0ef;
+  color: #b3261e;
+  border: 1px solid #f3c2bd;
+}
+
+.ais-cost {
+  font-size: 11.5px;
+  color: #6b7280;
+  background: #f7f9fc;
+  border: 1px solid #e8ecf3;
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+
+.ais-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 13px 18px;
+  border-top: 1px solid #f0f2f5;
+}
+
+@media (max-width: 640px) {
+  .ais-box { max-height: 92vh; }
+  .ais-head, .ais-body, .ais-foot { padding-left: 14px; padding-right: 14px; }
+}
+
 </style>
 </head>
 <body>
@@ -1769,6 +1895,7 @@ body.no-scroll-body {
     <button class="btn" id="btnDocs">文档</button>
     <button class="btn" id="btnEdit">编辑</button>
     <button class="btn primary" id="btnSaveAs" style="display:none">另存为</button>
+    <button class="btn" id="btnSettings" title="AI 翻译设置">⚙</button>
     <button class="btn" id="btnUpdate" title="检查更新">⟳ 更新</button>
   </div>
 
@@ -1788,6 +1915,7 @@ body.no-scroll-body {
     <button class="btn" data-more="docs">文档库</button>
     <button class="btn" data-more="edit">编辑模式</button>
     <button class="btn" data-more="saveas">另存为</button>
+    <button class="btn" data-more="settings">⚙ AI 设置</button>
     <button class="btn" data-more="update">⟳ 检查更新</button>
     <label class="more-check"><input type="checkbox" id="chkOptionsM"> 选项也翻译</label>
   </div>
@@ -1855,6 +1983,51 @@ body.no-scroll-body {
 
 <div class="toast" id="toast"></div>
 
+<!-- AI 设置 -->
+<div class="ai-set" id="aiSet">
+  <div class="ais-box">
+    <div class="ais-head">
+      <span class="ais-title">AI 翻译设置</span>
+      <button class="btn sm" id="aisClose">关闭</button>
+    </div>
+
+    <div class="ais-body">
+      <div class="ais-field">
+        <label>服务商</label>
+        <select id="aisProvider">
+          <option value="deepseek">DeepSeek（推荐，质量最好）</option>
+          <option value="siliconflow">硅基流动 SiliconFlow</option>
+          <option value="modelscope">ModelScope 魔搭（有免费额度）</option>
+        </select>
+      </div>
+
+      <div class="ais-field">
+        <label>模型</label>
+        <select id="aisModel"></select>
+        <div class="ais-hint" id="aisModelHint"></div>
+      </div>
+
+      <div class="ais-field">
+        <label>API Key</label>
+        <div class="ais-keyrow">
+          <input type="password" id="aisKey" placeholder="粘贴你的 Key" autocomplete="off">
+          <button class="btn sm" id="aisShow">显示</button>
+        </div>
+        <div class="ais-hint">Key 只存在这台设备上，不会上传到任何服务器。</div>
+      </div>
+
+      <div class="ais-test" id="aisTestResult"></div>
+
+      <div class="ais-cost" id="aisCost"></div>
+    </div>
+
+    <div class="ais-foot">
+      <button class="btn" id="aisTest">测试连通</button>
+      <button class="btn primary" id="aisSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 文档库：点标题看完整名字 -->
 <div class="name-tip" id="nameTip"></div>
 
@@ -1863,7 +2036,7 @@ body.no-scroll-body {
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.3.0';</script>
+<script>window.__APP_VERSION__ = '1.4.0';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -3060,6 +3233,485 @@ window.DocParser = {
   parsePDF: parsePDF,
   buildBlocks: buildBlocks,
   cleanText: cleanText,
+};
+
+})();
+
+</script>
+<script>
+/* ============================================================
+ * AI 翻译 / 查词（OpenAI 兼容接口）
+ *
+ * 支持三家，接口格式一致，只是 base/model 不同：
+ *   DeepSeek       https://api.deepseek.com/chat/completions
+ *   硅基流动        https://api.siliconflow.cn/v1/chat/completions
+ *   ModelScope     https://api-inference.modelscope.cn/v1/chat/completions
+ *
+ * Key 只存在本机（IndexedDB），不上传、不同步。
+ * ============================================================ */
+(function () {
+'use strict';
+
+/* ---------- 服务商定义 ---------- */
+const PROVIDERS = {
+  deepseek: {
+    label: 'DeepSeek',
+    url: 'https://api.deepseek.com/chat/completions',
+    models: ['deepseek-flash', 'deepseek-v4-pro'],
+    defaultModel: 'deepseek-flash',
+    // 支持强制 JSON 输出
+    jsonMode: true,
+  },
+  siliconflow: {
+    label: '硅基流动',
+    url: 'https://api.siliconflow.cn/v1/chat/completions',
+    models: [
+      'Qwen/Qwen2.5-7B-Instruct',
+      'Qwen/Qwen2.5-14B-Instruct',
+      'Qwen/Qwen2.5-32B-Instruct',
+      'THUDM/glm-4-9b-chat',
+    ],
+    defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+    jsonMode: true,
+  },
+  modelscope: {
+    label: 'ModelScope 魔搭',
+    url: 'https://api-inference.modelscope.cn/v1/chat/completions',
+    models: [
+      'Qwen/Qwen2.5-7B-Instruct',
+      'Qwen/Qwen2.5-14B-Instruct',
+      'Qwen/Qwen3-8B',
+    ],
+    defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+    jsonMode: false,     // 魔搭部分模型不支持 response_format
+  },
+};
+
+/* ---------- 配置存取 ---------- */
+// { provider, model, keys: { deepseek: 'sk-..', siliconflow: '..', modelscope: '..' } }
+let _cfg = null;
+let _cfgPromise = null;
+
+const CFG_KEY = 'ai:config';
+
+function defaultConfig() {
+  return {
+    provider: 'deepseek',
+    model: PROVIDERS.deepseek.defaultModel,
+    keys: {},
+  };
+}
+
+async function loadConfig() {
+  if (_cfg) return _cfg;
+  if (_cfgPromise) return _cfgPromise;
+
+  _cfgPromise = (async () => {
+    let cfg = null;
+    try {
+      if (window.__DB__ && window.__DB__.get) {
+        const rec = await window.__DB__.get('meta', CFG_KEY);
+        if (rec && rec.value) cfg = rec.value;
+      }
+    } catch (e) { /* 忽略 */ }
+
+    // 退回 localStorage（兼容旧版 / IndexedDB 不可用）
+    if (!cfg) {
+      try {
+        const s = localStorage.getItem(CFG_KEY);
+        if (s) cfg = JSON.parse(s);
+      } catch (e) { /* 忽略 */ }
+    }
+
+    _cfg = Object.assign(defaultConfig(), cfg || {});
+    _cfg.keys = _cfg.keys || {};
+    return _cfg;
+  })();
+
+  return _cfgPromise;
+}
+
+async function saveConfig(patch) {
+  const cfg = await loadConfig();
+  Object.assign(cfg, patch || {});
+  _cfg = cfg;
+  try {
+    if (window.__DB__ && window.__DB__.put) {
+      await window.__DB__.put('meta', { key: CFG_KEY, value: cfg });
+    }
+  } catch (e) { /* 忽略 */ }
+  try {
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  } catch (e) { /* 忽略 */ }
+  return cfg;
+}
+
+/* ---------- 取当前可用配置 ---------- */
+async function current() {
+  const cfg = await loadConfig();
+  const p = PROVIDERS[cfg.provider] || PROVIDERS.deepseek;
+  const key = (cfg.keys[cfg.provider] || '').trim();
+  const model = cfg.model || p.defaultModel;
+  return { cfg, provider: cfg.provider, meta: p, key, model };
+}
+
+function hasKey() {
+  return loadConfig().then(cfg => {
+    const k = (cfg.keys[cfg.provider] || '').trim();
+    return !!k;
+  });
+}
+
+/* ---------- 底层请求 ---------- */
+function truncateForLog(s, n) {
+  s = String(s || '');
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+// 把 HTTP 状态码翻译成人话
+function friendlyError(status, body) {
+  const b = String(body || '');
+  if (status === 401 || /invalid.*key|authentication/i.test(b)) {
+    return 'API Key 无效，请到设置里检查';
+  }
+  if (status === 402 || /insufficient|balance|quota/i.test(b)) {
+    return '余额不足，请到服务商后台充值';
+  }
+  if (status === 429 || /rate.?limit|too many/i.test(b)) {
+    return '请求太频繁被限流，请稍后再试';
+  }
+  if (status === 404) {
+    return '模型名不对，请到设置里换一个模型';
+  }
+  if (status >= 500) {
+    return '服务商暂时故障（' + status + '），稍后再试';
+  }
+  return '请求失败（' + status + '）：' + truncateForLog(b, 120);
+}
+
+/**
+ * 调用 chat/completions
+ * @param {object} opts
+ *   messages  [{role, content}]
+ *   temperature
+ *   maxTokens
+ *   json      bool  是否要求 JSON 输出
+ *   timeoutMs
+ * @returns {Promise<{ok, text, error, usage}>}
+ */
+async function chat(opts) {
+  const o = opts || {};
+  const { cfg, provider, meta, key, model } = await current();
+
+  if (!key) {
+    return { ok: false, error: '还没有填 API Key' };
+  }
+
+  const body = {
+    model: model,
+    messages: o.messages,
+    temperature: (o.temperature === undefined ? 0.3 : o.temperature),
+    stream: false,
+  };
+  if (o.maxTokens) body.max_tokens = o.maxTokens;
+  if (o.json && meta.jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), o.timeoutMs || 120000);
+
+  try {
+    const r = await fetch(meta.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      },
+      body: JSON.stringify(body),
+      signal: ctl.signal,
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+      return { ok: false, error: friendlyError(r.status, txt), status: r.status };
+    }
+
+    let j;
+    try {
+      j = JSON.parse(txt);
+    } catch (e) {
+      return { ok: false, error: '返回内容不是合法 JSON' };
+    }
+
+    const choice = j && j.choices && j.choices[0];
+    const content = choice && choice.message && choice.message.content;
+    if (!content) {
+      return { ok: false, error: '返回内容为空' };
+    }
+    return { ok: true, text: String(content), usage: j.usage || null };
+
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      return { ok: false, error: '请求超时（' + Math.round((o.timeoutMs || 120000) / 1000) + ' 秒）' };
+    }
+    const msg = (e && e.message) || String(e);
+    if (/Failed to fetch|NetworkError/i.test(msg)) {
+      return { ok: false, error: '网络连不上（检查网络，或该服务商不支持浏览器直连）' };
+    }
+    return { ok: false, error: msg };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* ---------- 连通性测试 ---------- */
+async function testConnection(providerId, key, model) {
+  const meta = PROVIDERS[providerId];
+  if (!meta) return { ok: false, error: '未知服务商' };
+  if (!key) return { ok: false, error: '没有填 Key' };
+
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 30000);
+  const t0 = Date.now();
+
+  try {
+    const r = await fetch(meta.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      },
+      body: JSON.stringify({
+        model: model || meta.defaultModel,
+        messages: [{ role: 'user', content: '回复两个字：你好' }],
+        max_tokens: 20,
+        stream: false,
+      }),
+      signal: ctl.signal,
+    });
+    const txt = await r.text();
+    const ms = Date.now() - t0;
+
+    if (!r.ok) return { ok: false, error: friendlyError(r.status, txt), ms: ms };
+
+    let j;
+    try { j = JSON.parse(txt); } catch (e) {
+      return { ok: false, error: '返回不是 JSON', ms: ms };
+    }
+    const c = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if (!c) return { ok: false, error: '返回内容为空', ms: ms };
+
+    return { ok: true, ms: ms, reply: String(c).trim().slice(0, 40) };
+  } catch (e) {
+    const ms = Date.now() - t0;
+    if (e && e.name === 'AbortError') return { ok: false, error: '超时 30 秒', ms: ms };
+    return { ok: false, error: (e && e.message) || String(e), ms: ms };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* ---------- 从返回文本里抠出 JSON ---------- */
+function parseJsonLoose(text) {
+  if (!text) return null;
+  let s = String(text).trim();
+
+  // 去掉 ```json ``` 围栏
+  s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+  try { return JSON.parse(s); } catch (e) { /* 继续尝试 */ }
+
+  // 抠第一个 { 到最后一个 }
+  const a = s.indexOf('{');
+  const b = s.lastIndexOf('}');
+  if (a >= 0 && b > a) {
+    try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { /* 失败 */ }
+  }
+  return null;
+}
+
+/* ---------- 掩码显示 Key ---------- */
+function maskKey(k) {
+  k = String(k || '');
+  if (!k) return '';
+  if (k.length <= 8) return '••••';
+  return k.slice(0, 4) + '••••••' + k.slice(-4);
+}
+
+/* ---------- 对外接口 ---------- */
+window.AI = {
+  PROVIDERS: PROVIDERS,
+  loadConfig: loadConfig,
+  saveConfig: saveConfig,
+  current: current,
+  hasKey: hasKey,
+  chat: chat,
+  testConnection: testConnection,
+  parseJsonLoose: parseJsonLoose,
+  maskKey: maskKey,
+};
+
+})();
+
+</script>
+<script>
+/* ============================================================
+ * 整段翻译（AI）
+ *
+ * 和旧版「逐句送翻译接口」的区别：
+ *   旧：一句一句送，没有上下文，指代/术语/语气全丢
+ *   新：一整段一次送，标题/步骤/术语一致，译文对回原文行
+ *
+ * 对不齐时自动降级为逐句，保证不会出现「整段错位」。
+ * ============================================================ */
+(function () {
+'use strict';
+
+/* ---------- 提示词 ---------- */
+const SYS_TRANSLATE = [
+  '你是英语考试阅读材料的翻译专家，服务对象是中国学生，用途是精读。',
+  '',
+  '要求：',
+  '1. 中文要通顺自然，符合中文表达习惯，不要逐词硬译，不要翻译腔。',
+  '2. 保持原文信息完整，不要增删、不要解释、不要加注释。',
+  '3. 人名、地名、机构名按通行译法；专业术语前后一致。',
+  '4. 原文的编号、选项字母（如 A)、21.）原样保留在译文对应位置。',
+  '5. 每个输入行对应恰好一个输出行，行数和顺序严格一致，不要合并、不要拆分、不要空行。',
+  '6. 只输出 JSON，不要任何解释文字。',
+  '',
+  '输出格式：',
+  '{"lines":["第一行译文","第二行译文", ...]}',
+].join('\n');
+
+const SYS_TRANSLATE_PLAIN = [
+  '你是英语翻译专家，服务对象是中国学生，用于精读。',
+  '把用户给的英文翻译成通顺自然的中文：不要逐词硬译、不要翻译腔；信息完整，不增删、不加解释；',
+  '编号和选项字母（如 A)、21.）原样保留；每个输入行对应一个输出行，行数顺序严格一致。',
+  '只输出译文，一行对一行，不要任何说明。',
+].join('\n');
+
+/* ---------- 单次调用：一批行 → 一批译文 ---------- */
+/**
+ * @param {string[]} lines 原文行
+ * @returns {Promise<{ok, lines:string[], error}>}
+ */
+async function translateLines(lines) {
+  if (!lines || !lines.length) return { ok: true, lines: [] };
+
+  const numbered = lines.map((t, i) => (i + 1) + '. ' + t).join('\n');
+
+  const cfg = await window.AI.loadConfig();
+  const meta = window.AI.PROVIDERS[cfg.provider] || {};
+
+  // 先试 JSON 模式（行对齐最稳）
+  if (meta.jsonMode !== false) {
+    const r = await window.AI.chat({
+      messages: [
+        { role: 'system', content: SYS_TRANSLATE },
+        { role: 'user', content: '请翻译下面 ' + lines.length + ' 行（每行前的数字只是行号，不要翻进译文）：\n\n' + numbered },
+      ],
+      temperature: 0.2,
+      maxTokens: 4000,
+      json: true,
+      timeoutMs: 120000,
+    });
+
+    if (r.ok) {
+      const j = window.AI.parseJsonLoose(r.text);
+      const arr = j && (j.lines || j.translations || j.result);
+      if (Array.isArray(arr) && arr.length === lines.length) {
+        return { ok: true, lines: arr.map(x => String(x == null ? '' : x).trim()) };
+      }
+      // 行数对不上 → 尝试宽松修复（见下）
+      const fixed = alignLoose(arr, lines);
+      if (fixed) return { ok: true, lines: fixed };
+    } else if (r.error && /Key|余额|超时|网络/.test(r.error)) {
+      // 这些错误重试也没用
+      return { ok: false, error: r.error };
+    }
+  }
+
+  // 退回纯文本模式：一行对一行
+  const r2 = await window.AI.chat({
+    messages: [
+      { role: 'system', content: SYS_TRANSLATE_PLAIN },
+      { role: 'user', content: numbered },
+    ],
+    temperature: 0.2,
+    maxTokens: 4000,
+    timeoutMs: 120000,
+  });
+
+  if (!r2.ok) return { ok: false, error: r2.error };
+
+  const got = String(r2.text || '')
+    .split('\n')
+    .map(s => s.replace(/^\s*\d+[.、)]\s*/, '').trim())
+    .filter((s, i, a) => !(s === '' && (i === 0 || i === a.length - 1)));
+
+  if (got.length === lines.length) return { ok: true, lines: got };
+
+  const fixed2 = alignLoose(got, lines);
+  if (fixed2) return { ok: true, lines: fixed2 };
+
+  return { ok: false, error: '译文行数对不齐（得到 ' + got.length + ' 行，需要 ' + lines.length + ' 行）' };
+}
+
+/* ---------- 行数对不齐时的宽松修复 ---------- */
+// 常见情况：多出空行、少了几行、或者合并了。
+// 处理策略：去掉空行后如果数量合适就用；否则判定失败（宁可降级也不乱对）。
+function alignLoose(arr, lines) {
+  if (!Array.isArray(arr)) return null;
+  const cleaned = arr.map(x => String(x == null ? '' : x).trim()).filter(s => s !== '');
+  if (cleaned.length === lines.length) return cleaned;
+  return null;
+}
+
+/* ---------- 逐句降级（保证不断档） ---------- */
+async function translateOneByOne(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const r = await window.AI.chat({
+      messages: [
+        { role: 'system', content: '把下面这句英文翻译成通顺自然的中文，只输出译文本身，不要任何解释。' },
+        { role: 'user', content: lines[i] },
+      ],
+      temperature: 0.2,
+      maxTokens: 600,
+      timeoutMs: 60000,
+    });
+    out.push(r.ok ? String(r.text).trim() : '');
+  }
+  return out;
+}
+
+/* ---------- 翻译一个"段落"（多行） ---------- */
+/**
+ * @param {string[]} lines
+ * @param {object} opt { onProgress }
+ * @returns {Promise<{ok, lines:string[], error, fallback}>}
+ */
+async function translateParagraph(lines, opt) {
+  const o = opt || {};
+  if (!lines || !lines.length) return { ok: true, lines: [] };
+
+  const r = await translateLines(lines);
+  if (r.ok) return { ...r, fallback: false };
+
+  // 行数对不齐 → 逐句降级（慢但不会错位）
+  if (o.allowFallback !== false) {
+    if (o.onProgress) o.onProgress('fallback');
+    const one = await translateOneByOne(lines);
+    if (one.some(x => x)) return { ok: true, lines: one, fallback: true };
+  }
+  return { ok: false, error: r.error };
+}
+
+window.AITranslate = {
+  translateParagraph: translateParagraph,
+  translateLines: translateLines,
 };
 
 })();
@@ -4363,11 +5015,36 @@ function visibleSentenceIds() {
   return ids;
 }
 
-async function translateBatch(scope) {
+// 把目标句子按「段落」分组：key = bi，value = [g, g, ...]
+function groupByBlock(targets) {
+  const map = new Map();
+  for (const g of targets) {
+    const it = S.flat.find(x => x.g === g);
+    if (!it) continue;
+    if (!map.has(it.bi)) map.set(it.bi, []);
+    map.get(it.bi).push(g);
+  }
+  return map;
+}
+
+async function translateBatch(scope, range) {
   if (S.trBusy) { toast('正在翻译中，请稍候'); return; }
-  const targets = pendingTargets(scope);
+
+  const hasKey = await window.AI.hasKey();
+  if (!hasKey) {
+    toast('还没有填 API Key，请到设置里填一下', true);
+    openSettings();
+    return;
+  }
+
+  let targets;
+  if (range) {
+    targets = range.filter(g => !S.tr[g]);
+  } else {
+    targets = pendingTargets(scope);
+  }
   if (!targets.length) {
-    toast(scope === 'all' ? '全文已翻译完毕' : '当前可见范围没有待翻译的句子');
+    toast('没有需要翻译的内容');
     return;
   }
 
@@ -4375,39 +5052,246 @@ async function translateBatch(scope) {
   S.trStop = false;
   setTrProgress(true, 0, targets.length);
 
-  let done = 0;
-  for (let i = 0; i < targets.length; i += TR_BATCH) {
-    if (S.trStop) { toast('已暂停'); break; }
-    const chunk = targets.slice(i, i + TR_BATCH);
-    const lines = chunk.map(g => itemText(g));
-    const res = await requestTranslate(lines);
+  const groups = groupByBlock(targets);
+  const blocks = [...groups.keys()].sort((a, b) => a - b);
 
-    let allFailed = true;
-    res.forEach((t, k) => {
-      if (t) {
-        allFailed = false;
-        const g = chunk[k];
-        S.tr[g] = t;
-        renderTrFor(g, t);
-        done++;
-      }
+  let done = 0;
+  let failedBlocks = 0;
+  let lastError = '';
+
+  for (const bi of blocks) {
+    if (S.trStop) { toast('已暂停'); break; }
+
+    const gs = groups.get(bi);
+    const lines = gs.map(g => itemText(g)).filter(t => t && t.trim());
+    if (!lines.length) continue;
+
+    const r = await window.AITranslate.translateParagraph(lines, {
+      onProgress: (phase) => { if (phase === 'fallback') setTrProgress(true, done, targets.length, ' 逐句重试'); },
     });
-    if (allFailed && res.length) {
-      toast('翻译接口无响应，已停止。请检查网络。', true);
-      break;
+
+    if (r.ok) {
+      // 译文按顺序回填
+      let k = 0;
+      for (const g of gs) {
+        const t = itemText(g);
+        if (!t || !t.trim()) continue;
+        const zh = (r.lines[k++] || '').trim();
+        if (zh) {
+          S.tr[g] = zh;
+          renderTrFor(g, zh);
+          done++;
+        }
+      }
+    } else {
+      failedBlocks++;
+      lastError = r.error || '未知错误';
     }
+
     setTrProgress(true, done, targets.length);
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r2 => setTimeout(r2, 80));
   }
 
   S.trBusy = false;
   setTrProgress(false, 0, 0);
-  updateTrStats();
   persistTr();
-  if (done) toast(`翻译完成：${done} 句`);
+  updateTrStats();
+
+  if (failedBlocks) {
+    const allFailed = done === 0;
+    toast(allFailed
+      ? ('翻译失败：' + lastError)
+      : (failedBlocks + ' 段没翻成功（' + lastError + '），其余已完成'), true);
+  } else if (done) {
+    toast('翻译完成：' + done + ' 句');
+  }
 }
 
-// 把译文渲染到对应位置
+// ==================== AI 设置 ====================
+const COST_HINT = {
+  deepseek: '高峰约 7 分钱一份真题，空闲时段减半（3–4 分）',
+  siliconflow: '部分小模型免费，付费模型约 1–2 毛一份真题',
+  modelscope: '有免费额度，超出后按量计费；免费档有限流',
+};
+
+function openSettings() {
+  const dlg = $('aiSet');
+  if (!dlg) return;
+
+  const selP = $('aisProvider');
+  const selM = $('aisModel');
+  const inpK = $('aisKey');
+  const result = $('aisTestResult');
+
+  window.AI.loadConfig().then(cfg => {
+    selP.value = cfg.provider || 'deepseek';
+    fillModels(selP.value, cfg.model);
+    inpK.value = (cfg.keys && cfg.keys[cfg.provider]) || '';
+    inpK.type = 'password';
+    $('aisShow').textContent = '显示';
+    $('aisCost').textContent = COST_HINT[selP.value] || '';
+  });
+
+  function fillModels(provider, want) {
+    const meta = window.AI.PROVIDERS[provider];
+    if (!meta) return;
+    selM.innerHTML = meta.models
+      .map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>')
+      .join('');
+    selM.value = (want && meta.models.indexOf(want) >= 0) ? want : meta.defaultModel;
+    $('aisModelHint').textContent =
+      provider === 'deepseek' ? 'deepseek-flash 性价比最高；v4-pro 更准但贵一些'
+      : provider === 'siliconflow' ? '7B 最快；14B/32B 更准但更慢'
+      : '魔搭部分模型不支持 JSON 输出，会自动降级';
+  }
+
+  selP.addEventListener('change', async () => {
+    const pv = selP.value;
+    const cfg = await window.AI.loadConfig();
+    fillModels(pv, '');
+    inpK.value = (cfg.keys && cfg.keys[pv]) || '';
+    $('aisCost').textContent = COST_HINT[pv] || '';
+    result.className = 'ais-test';
+    result.textContent = '';
+  });
+
+  $('aisShow').addEventListener('click', () => {
+    const show = inpK.type === 'password';
+    inpK.type = show ? 'text' : 'password';
+    $('aisShow').textContent = show ? '隐藏' : '显示';
+  });
+
+  $('aisTest').addEventListener('click', async () => {
+    const pv = selP.value;
+    const key = inpK.value.trim();
+    const model = selM.value;
+    if (!key) { result.className = 'ais-test bad'; result.textContent = '请先填 API Key'; return; }
+
+    result.className = 'ais-test';
+    result.textContent = '测试中…';
+    const r = await window.AI.testConnection(pv, key, model);
+    if (r.ok) {
+      result.className = 'ais-test ok';
+      result.textContent = '连通正常（' + r.ms + 'ms），模型回复：' + (r.reply || '');
+    } else {
+      result.className = 'ais-test bad';
+      result.textContent = '失败：' + r.error;
+    }
+  });
+
+  $('aisSave').addEventListener('click', async () => {
+    const cfg = await window.AI.loadConfig();
+    cfg.keys = cfg.keys || {};
+    cfg.keys[selP.value] = inpK.value.trim();
+    await window.AI.saveConfig({
+      provider: selP.value,
+      model: selM.value,
+      keys: cfg.keys,
+    });
+    toast('已保存');
+    dlg.classList.remove('show');
+  });
+
+  $('aisClose').addEventListener('click', () => dlg.classList.remove('show'));
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.classList.remove('show'); });
+
+  dlg.classList.add('show');
+}
+
+// ==================== 翻译范围选择 ====================
+function openTranslateRangeDlg() {
+  if (!S.flat.length) { toast('先导入文档', true); return; }
+
+  const max = S.flat.length;
+  const blkCount = S.blocks.length;
+
+  let dlg = $('trRangeDlg');
+  if (!dlg) {
+    dlg = document.createElement('div');
+    dlg.id = 'trRangeDlg';
+    dlg.className = 'modal';
+    document.body.appendChild(dlg);
+  }
+
+  dlg.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-title">翻译范围</div>
+      <div class="modal-row">
+        <label>句子</label>
+        <input type="number" id="trFrom" value="1" min="1" max="${max}">
+        <span>到</span>
+        <input type="number" id="trTo" value="${max}" min="1" max="${max}">
+        <span class="muted">共 ${max} 句</span>
+      </div>
+      <div class="modal-row">
+        <label>段落</label>
+        <input type="number" id="trBlk" value="1" min="1" max="${blkCount}">
+        <span class="muted">共 ${blkCount} 段</span>
+        <button class="btn sm" id="trByBlk">只翻这段</button>
+      </div>
+      <div class="modal-row">
+        <label>快捷</label>
+        <button class="btn sm" id="trVisible">翻屏幕上看到的</button>
+        <button class="btn sm" id="trAll">翻全文</button>
+        <button class="btn sm" id="trRetry">重翻已翻过的</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="trCancel">取消</button>
+        <button class="btn primary" id="trGo">开始翻译</button>
+      </div>
+      <div class="modal-tip">默认按「整段」送给 AI，译文有上下文更通顺。翻译结果会存下来，下次打开直接显示，不会重复花钱。</div>
+    </div>`;
+
+  dlg.classList.add('show');
+  const close = () => dlg.classList.remove('show');
+  $('trCancel').addEventListener('click', close);
+  dlg.addEventListener('click', e => { if (e.target === dlg) close(); });
+
+  const doRange = (a, b) => {
+    a = Math.max(1, Math.min(a, max));
+    b = Math.max(1, Math.min(b, max));
+    if (a > b) { const t = a; a = b; b = t; }
+    close();
+    // 句子序号 -> g（S.flat 下标）
+    const gs = [];
+    for (let i = a - 1; i <= b - 1 && i < S.flat.length; i++) {
+      gs.push(S.flat[i].g);
+    }
+    translateBatch(null, gs);
+  };
+
+  $('trGo').addEventListener('click', () => {
+    doRange(parseInt($('trFrom').value, 10) || 1, parseInt($('trTo').value, 10) || max);
+  });
+
+  $('trByBlk').addEventListener('click', () => {
+    const n = parseInt($('trBlk').value, 10);
+    if (!n || n < 1 || n > blkCount) { toast('段号无效', true); return; }
+    const items = S.flat.filter(x => x.bi === n - 1);
+    if (!items.length) { toast('这一段没有内容', true); return; }
+    close();
+    translateBatch(null, items.map(x => x.g));
+  });
+
+  $('trVisible').addEventListener('click', () => {
+    const ids = visibleSentenceIds();
+    if (!ids.length) { toast('屏幕上没有可见内容', true); return; }
+    close();
+    translateBatch(null, ids);
+  });
+
+  $('trAll').addEventListener('click', () => { close(); translateBatch('all'); });
+
+  $('trRetry').addEventListener('click', () => {
+    S.tr = {};
+    S.trPara = {};
+    persistTr();
+    renderDoc(S.blocks);
+    updateTrStats();
+    close();
+    toast('已清空译文，重新点「全文翻译」即可');
+  });
+}
 function renderTrFor(g, text) {
   const item = S.flat.find(x => x.g === g);
 
@@ -4464,21 +5348,50 @@ function setTrProgress(on, done, total) {
   bar.querySelector('.fill').style.width = pct + '%';
 }
 
-// 译文持久化（按文档名存）
+// 译文持久化：按文档 id 存（改名不会丢），同时兼容旧的按名字存的记录
+function trStorageKeys() {
+  const keys = [];
+  if (S.doc && S.doc.id) keys.push('tr:id:' + S.doc.id);
+  if (S.doc && S.doc.name) keys.push('tr:' + S.doc.name);   // 旧格式
+  return keys;
+}
+
 function persistTr() {
+  const keys = trStorageKeys();
+  if (!keys.length) return;
   try {
-    const key = 'tr:' + (S.doc ? S.doc.name : '');
-    localStorage.setItem(key, JSON.stringify(S.tr));
-  } catch (e) {}
+    localStorage.setItem(keys[0], JSON.stringify(S.tr));
+  } catch (e) {
+    // 容量不够时清理最旧的译文缓存
+    try { pruneTrCache(); localStorage.setItem(keys[0], JSON.stringify(S.tr)); } catch (e2) {}
+  }
 }
 
 function restoreTr() {
   S.tr = {};
-  try {
-    const key = 'tr:' + (S.doc ? S.doc.name : '');
-    const s = localStorage.getItem(key);
-    if (s) S.tr = JSON.parse(s) || {};
-  } catch (e) { S.tr = {}; }
+  for (const key of trStorageKeys()) {
+    try {
+      const s = localStorage.getItem(key);
+      if (s) {
+        const obj = JSON.parse(s) || {};
+        if (Object.keys(obj).length) { S.tr = obj; return; }
+      }
+    } catch (e) { /* 试下一个 key */ }
+  }
+}
+
+// localStorage 满了就清掉最旧的译文记录（保留当前文档的）
+function pruneTrCache() {
+  const cur = (S.doc && S.doc.id) ? ('tr:id:' + S.doc.id) : '';
+  const items = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.indexOf('tr:') === 0 && k !== cur) items.push(k);
+  }
+  // 简单策略：先删掉前一半
+  items.slice(0, Math.max(1, Math.floor(items.length / 2))).forEach(k => {
+    try { localStorage.removeItem(k); } catch (e) {}
+  });
 }
 
 // 全部译文显示/隐藏
@@ -5260,6 +6173,7 @@ function bindMobileUI() {
     trall: 'btnTranslateAll',
     toggleTr: 'btnToggleTr',
     docs: 'btnDocs',
+    settings: 'btnSettings',
     edit: 'btnEdit',
     saveas: 'btnSaveAs',
     update: 'btnUpdate',
@@ -6929,6 +7843,9 @@ async function boot() {
   // 文档库 / 编辑 / 另存为
   const btnDocs = $('btnDocs');
   if (btnDocs) btnDocs.addEventListener('click', showLibrary);
+
+  const btnSet = $('btnSettings');
+  if (btnSet) btnSet.addEventListener('click', openSettings);
   const btnReview = $('btnReview');
   if (btnReview) btnReview.addEventListener('click', startReviewUI);
   const btnEdit = $('btnEdit');
@@ -6953,7 +7870,7 @@ async function boot() {
   if (btnAll) {
     btnAll.disabled = false;
     btnAll.title = '翻译全文（已翻过的不会重复请求）';
-    btnAll.addEventListener('click', () => translateBatch('all'));
+    btnAll.addEventListener('click', () => openTranslateRangeDlg());
   }
   const btnPage = $('btnTranslatePage');
   if (btnPage) btnPage.addEventListener('click', () => translateBatch('page'));
@@ -7024,7 +7941,17 @@ window.__APP__ = {
   renameDoc: renameDoc,
   showFullName: showFullName,
   askText: askText,
+  persistTr: persistTr,
+  restoreTr: restoreTr,
+  translateBatch: translateBatch,
+  openTranslateRangeDlg: openTranslateRangeDlg,
+  openSettings: openSettings,
+  itemText: itemText,
 };
+
+// 供内部模块互调
+window.persistTr = persistTr;
+window.restoreTr = restoreTr;
 
 })();
 
