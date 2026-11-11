@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "notes": "翻译改成接 AI 了，质量会明显不一样。以前是一句一句送到免费接口，没有上下文，所以指代（it/they/this）和长句经常翻得别扭；现在按整段送，有上下文，术语和语气也统一。\n\n用法：先点顶栏「⚙」填 API Key（DeepSeek / 硅基流动 / ModelScope 三家都支持，可随时切换），填完点「测试连通」确认能用。之后点「全文翻译」会弹范围框，可以翻全文、翻当前屏幕、翻指定段落或句子区间。\n\n译文会存下来，下次打开同一份文档直接显示，不会重复花钱。文档改名也不会丢译文了（以前会丢）。复习里的例句翻译同样走缓存。\n\n成本参考：DeepSeek 一份真题约 7 分钱，空闲时段 3–4 分。",
+  "version": "1.5.1",
+  "notes": "补上了复习和生词本里的翻译。之前这几个地方的「译整句」还在用免费接口，而且每次都重新请求、不读已有译文；现在统一了：先看你有没有翻过这句（有就直接显示，不花钱），没有再让 AI 翻，AI 不可用才退回免费接口。翻译结果会存下来，下次点同一个句子直接出结果。\n\n涉及：生词本的「译整句」、复习卡片里的「译整句」、复习选择题反馈里的例句、主文档单句「译」。用 AI 翻出来的会标「收起译文 · AI」，方便区分。",
   "url": "https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url2": "https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url3": "https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html"

@@ -1872,6 +1872,167 @@ body.no-scroll-body {
   .ais-head, .ais-body, .ais-foot { padding-left: 14px; padding-right: 14px; }
 }
 
+/* ============================================================
+ * 下载进度条
+ * ============================================================ */
+.dl-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4000;
+  display: none;
+  padding: 8px 16px 9px;
+  background: #1f2430;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .25);
+}
+.dl-bar.show { display: block; }
+
+.dl-inner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 12.5px;
+  color: #e6e9ef;
+}
+
+.dl-text { flex: 0 0 auto; white-space: nowrap; }
+
+.dl-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, .18);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.dl-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4a7cf7, #6ea8ff);
+  border-radius: 3px;
+  transition: width .2s linear;
+}
+
+.dl-size {
+  flex: 0 0 auto;
+  min-width: 38px;
+  text-align: right;
+  color: #9aa4b8;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .dl-bar { padding: 7px 12px 8px; }
+  .dl-inner { font-size: 11.5px; gap: 8px; }
+  .dl-size { min-width: 32px; }
+}
+
+/* 手机端常驻翻译按钮 */
+.topbar-tr-btn {
+  flex: 0 0 auto;
+  min-width: 38px;
+  font-weight: 600;
+}
+@media (min-width: 641px) {
+  .topbar-tr-btn { display: none !important; }
+}
+
+/* ============================================================
+ * 段落级 AI 翻译按钮
+ * ============================================================ */
+.blk-tr {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: #4a7cf7;
+  background: #eef3ff;
+  border: 1px solid #d3e0ff;
+  border-radius: 9px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: .12s;
+  font-family: inherit;
+}
+.blk-tr:hover { background: #e0eaff; border-color: #b6cbff; }
+.blk-tr:active { transform: scale(.96); }
+.blk-tr.hidden { display: none; }
+
+/* ============================================================
+ * 选句翻译模式
+ * ============================================================ */
+body.pick-mode .sent.pickable {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background .12s;
+}
+body.pick-mode .sent.pickable:hover {
+  background: rgba(74, 124, 247, .09);
+}
+body.pick-mode .sent.picked {
+  background: rgba(74, 124, 247, .17);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(74, 124, 247, .35);
+}
+/* 选句模式下词不再高亮成可点 */
+body.pick-mode .w { cursor: pointer; }
+body.pick-mode .w:hover { background: none; }
+
+.pick-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: #fff;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .16);
+  font-size: 13px;
+  max-width: calc(100vw - 24px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pick-bar .pk-count {
+  font-weight: 600;
+  color: #2a56d6;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .pick-bar {
+    bottom: 10px;
+    padding: 8px 10px;
+    gap: 6px;
+    font-size: 12.5px;
+  }
+}
+
+/* 查词按钮组 */
+.lookup-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.lookup-btns .btn { flex: 0 0 auto; }
+
+/* AI 来源标签 */
+.tag.ai {
+  background: #eef3ff;
+  color: #2a56d6;
+  border-color: #d3e0ff;
+}
+
 </style>
 </head>
 <body>
@@ -1891,6 +2052,7 @@ body.no-scroll-body {
     <button class="btn" id="btnReadAll" title="从头朗读全文">🔊 全文朗读</button>
     <button class="btn" id="btnReadRange" title="朗读选中范围">🔊 范围</button>
     <button class="btn" id="btnTranslatePage" title="只翻译当前屏幕上看到的句子">本屏翻译</button>
+    <button class="btn" id="btnTranslatePick" title="点句子选着翻译">✏ 选句</button>
     <button class="btn primary" id="btnTranslateAll" title="翻译全文">全文翻译</button>
     <button class="btn" id="btnDocs">文档</button>
     <button class="btn" id="btnEdit">编辑</button>
@@ -1903,6 +2065,8 @@ body.no-scroll-body {
   <button class="btn primary" id="btnWordbook">生词本 <span id="wbCount">0</span></button>
   <button class="btn" id="btnReview">复习</button>
   <button class="btn primary" id="btnOpen">导入</button>
+  <!-- 手机端常驻翻译按钮（不用翻菜单） -->
+  <button class="btn topbar-tr-btn" id="btnTrMobile" title="翻译（可选范围）">译</button>
 
   <!-- 手机端「更多」菜单 -->
   <button class="btn topbar-more-btn" id="btnMore" title="更多功能">☰</button>
@@ -1911,6 +2075,7 @@ body.no-scroll-body {
     <button class="btn" data-more="readrange">🔊 范围朗读</button>
     <button class="btn" data-more="trpage">本屏翻译</button>
     <button class="btn" data-more="trall">全文翻译</button>
+    <button class="btn" data-more="trpick">✏ 选句翻译</button>
     <button class="btn" data-more="toggleTr">显示译文</button>
     <button class="btn" data-more="docs">文档库</button>
     <button class="btn" data-more="edit">编辑模式</button>
@@ -2036,7 +2201,7 @@ body.no-scroll-body {
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.4.0';</script>
+<script>window.__APP_VERSION__ = '1.5.1';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -3261,6 +3426,10 @@ const PROVIDERS = {
     defaultModel: 'deepseek-flash',
     // 支持强制 JSON 输出
     jsonMode: true,
+    // 默认开启「思考模式」：会先输出一大段思维链（reasoning_content），
+    // 把 max_tokens 吃光后 content 就是空的。
+    // 翻译/查词都不需要思考，显式关掉更快、更省、也不会空。
+    noThinking: true,
   },
   siliconflow: {
     label: '硅基流动',
@@ -3417,6 +3586,11 @@ async function chat(opts) {
   if (o.json && meta.jsonMode) {
     body.response_format = { type: 'json_object' };
   }
+  // 关掉思考模式（DeepSeek 专有参数，其他家不认这个字段，传了也无害，
+  // 但为了稳妥只在支持的家里加）
+  if (meta.noThinking) {
+    body.thinking = { type: 'disabled' };
+  }
 
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), o.timeoutMs || 120000);
@@ -3446,11 +3620,36 @@ async function chat(opts) {
     }
 
     const choice = j && j.choices && j.choices[0];
-    const content = choice && choice.message && choice.message.content;
+    const msg = (choice && choice.message) || {};
+    const content = msg.content;
+    const reasoning = msg.reasoning_content || msg.reasoning || '';
+
     if (!content) {
-      return { ok: false, error: '返回内容为空' };
+      // 空返回的三种可能：
+      //   a) 思考模式把额度吃光（有 reasoning 但没 content）
+      //   b) max_tokens 太小
+      //   c) 触发内容过滤
+      const finish = (choice && choice.finish_reason) || '';
+      let why = '返回内容为空';
+      if (reasoning) {
+        why = '模型把额度都用在"思考"上了（思考模式未关或额度太小）';
+      } else if (finish === 'length') {
+        why = '输出被截断（max_tokens 太小）';
+      } else if (finish === 'content_filter') {
+        why = '内容被服务商过滤了';
+      }
+
+      // 自动重试一次：关思考 + 提高额度
+      if (!o._retried) {
+        return chat(Object.assign({}, o, {
+          _retried: true,
+          json: false,
+          maxTokens: Math.max((o.maxTokens || 1000) * 3, 3000),
+        }));
+      }
+      return { ok: false, error: why };
     }
-    return { ok: true, text: String(content), usage: j.usage || null };
+    return { ok: true, text: String(content), usage: j.usage || null, reasoning: reasoning };
 
   } catch (e) {
     if (e && e.name === 'AbortError') {
@@ -3483,12 +3682,13 @@ async function testConnection(providerId, key, model) {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + key,
       },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         model: model || meta.defaultModel,
-        messages: [{ role: 'user', content: '回复两个字：你好' }],
-        max_tokens: 20,
+        messages: [{ role: 'user', content: '只回复两个字：你好' }],
+        // 额度给足：thinking 模式即使关掉，个别模型也要一点余量
+        max_tokens: 64,
         stream: false,
-      }),
+      }, meta.noThinking ? { thinking: { type: 'disabled' } } : {})),
       signal: ctl.signal,
     });
     const txt = await r.text();
@@ -3500,8 +3700,18 @@ async function testConnection(providerId, key, model) {
     try { j = JSON.parse(txt); } catch (e) {
       return { ok: false, error: '返回不是 JSON', ms: ms };
     }
-    const c = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    if (!c) return { ok: false, error: '返回内容为空', ms: ms };
+    const _m = (j && j.choices && j.choices[0] && j.choices[0].message) || {};
+    const c = _m.content;
+    if (!c) {
+      const fin = (j && j.choices && j.choices[0] && j.choices[0].finish_reason) || '';
+      return {
+        ok: false,
+        ms: ms,
+        error: _m.reasoning_content
+          ? '只拿到思维链、没有正文（思考模式未关）'
+          : ('返回内容为空' + (fin ? '（finish_reason=' + fin + '）' : '')),
+      };
+    }
 
     return { ok: true, ms: ms, reply: String(c).trim().slice(0, 40) };
   } catch (e) {
@@ -3613,7 +3823,7 @@ async function translateLines(lines) {
         { role: 'user', content: '请翻译下面 ' + lines.length + ' 行（每行前的数字只是行号，不要翻进译文）：\n\n' + numbered },
       ],
       temperature: 0.2,
-      maxTokens: 4000,
+      maxTokens: 8000,
       json: true,
       timeoutMs: 120000,
     });
@@ -3640,7 +3850,7 @@ async function translateLines(lines) {
       { role: 'user', content: numbered },
     ],
     temperature: 0.2,
-    maxTokens: 4000,
+    maxTokens: 8000,
     timeoutMs: 120000,
   });
 
@@ -3679,7 +3889,7 @@ async function translateOneByOne(lines) {
         { role: 'user', content: lines[i] },
       ],
       temperature: 0.2,
-      maxTokens: 600,
+      maxTokens: 1200,
       timeoutMs: 60000,
     });
     out.push(r.ok ? String(r.text).trim() : '');
@@ -3713,6 +3923,137 @@ window.AITranslate = {
   translateParagraph: translateParagraph,
   translateLines: translateLines,
 };
+
+})();
+
+</script>
+<script>
+/* ============================================================
+ * AI 查词：补全本地词库没有的词
+ *
+ * 本地词库命中 → 直接读（零成本）
+ * 词库没有   → 问 AI，拿到结构化详情，缓存到本地
+ * AI 不可用  → 退回现有的免费接口（只给释义）
+ *
+ * 重点防「编造」：提示词明确要求不确定就留空，
+ * 并做基本校验（变形是否合理、词级是否在允许集合内）。
+ * ============================================================ */
+(function () {
+'use strict';
+
+const SYS_WORD = [
+  '你是英语词典编辑，为中国学生（备考四六级/考研）编写词条。',
+  '',
+  '要求：',
+  '1. 只输出 JSON，不要任何解释。',
+  '2. 音标用国际音标，带斜杠，如 /əˈbændən/。',
+  '3. level 只能取这些值之一："小学"、"中考"、"高考"、"CET4"、"CET6"、"考研"、"GRE"、"雅思"、"托福"、"专业"、"超纲"。不确定就填 "超纲"。',
+  '4. 释义按词性分组，每个词性给 1–2 条最常用的中文释义，简洁准确，不要罗列生僻义。',
+  '5. forms 只填真实存在的变形（复数、过去式、过去分词、现在分词、比较级、最高级、名词形式、形容词形式、副词形式）。**不确定就留空字符串，绝对不要编造。**',
+  '6. etym 用一句话说明词根或来源，没有就说空字符串。',
+  '7. syn / ant 各给 2–4 个常用词，没有就给空数组。',
+  '',
+  '输出格式：',
+  '{"word":"","phonetic":"","level":"","defs":[{"pos":"","zh":""}],"forms":{"plural":"","past":"","pastPart":"","ing":"","comp":"","sup":"","noun":"","adj":"","adv":""},"etym":"","syn":[],"ant":[]}',
+].join('\n');
+
+const VALID_LEVELS = new Set([
+  '小学', '中考', '高考', 'CET4', 'CET6', '考研', 'GRE', '雅思', '托福', '专业', '超纲',
+]);
+
+// 变形字段的合理性校验：只看形状，不过度严格
+function looksLikeWord(s) {
+  if (!s || typeof s !== 'string') return false;
+  const t = s.trim();
+  if (!t) return false;
+  if (t.length > 30) return false;
+  if (!/^[a-zA-Z][a-zA-Z'\- ]*$/.test(t)) return false;
+  return true;
+}
+
+function cleanForms(raw, base) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  const allow = ['plural', 'past', 'pastPart', 'ing', 'comp', 'sup', 'noun', 'adj', 'adv'];
+  for (const k of allow) {
+    const v = raw[k];
+    if (looksLikeWord(v) && v.trim().toLowerCase() !== String(base || '').toLowerCase()) {
+      out[k] = v.trim();
+    }
+  }
+  return out;
+}
+
+function cleanDefs(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const d of raw.slice(0, 6)) {
+    if (!d || typeof d !== 'object') continue;
+    const pos = String(d.pos || '').trim().slice(0, 12);
+    const zh = String(d.zh || '').trim().slice(0, 80);
+    if (zh) out.push({ pos: pos, zh: zh });
+  }
+  return out;
+}
+
+function cleanList(raw, n) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(x => String(x || '').trim())
+    .filter(x => looksLikeWord(x))
+    .slice(0, n || 4);
+}
+
+/**
+ * 用 AI 查一个词
+ * @returns {Promise<{ok, data, error}>}
+ *   data: { word, phonetic, level, defs, forms, etym, syn, ant }
+ */
+async function lookup(word) {
+  const w = String(word || '').trim();
+  if (!w) return { ok: false, error: '没有单词' };
+
+  const has = await window.AI.hasKey();
+  if (!has) return { ok: false, error: '还没填 API Key', noKey: true };
+
+  const r = await window.AI.chat({
+    messages: [
+      { role: 'system', content: SYS_WORD },
+      { role: 'user', content: '请给出单词 "' + w + '" 的词条。' },
+    ],
+    temperature: 0.1,
+    maxTokens: 1200,
+    json: true,
+    timeoutMs: 45000,
+  });
+
+  if (!r.ok) return { ok: false, error: r.error };
+
+  const j = window.AI.parseJsonLoose(r.text);
+  if (!j) return { ok: false, error: 'AI 返回的不是 JSON' };
+
+  const defs = cleanDefs(j.defs || j.definitions);
+  if (!defs.length) return { ok: false, error: 'AI 没给出释义' };
+
+  let level = String(j.level || '').trim();
+  if (!VALID_LEVELS.has(level)) level = '超纲';
+
+  const data = {
+    word: String(j.word || w).trim(),
+    phonetic: String(j.phonetic || '').trim().slice(0, 60),
+    level: level,
+    defs: defs,
+    forms: cleanForms(j.forms, w),
+    etym: String(j.etym || '').trim().slice(0, 200),
+    syn: cleanList(j.syn || j.synonyms, 4),
+    ant: cleanList(j.ant || j.antonyms, 4),
+    fromAI: true,
+  };
+
+  return { ok: true, data: data };
+}
+
+window.AIWord = { lookup: lookup };
 
 })();
 
@@ -4008,6 +4349,7 @@ function renderDoc(blocks) {
         if (!isLast) html += ' ';
       });
       html += `<button class="spk-inline para" data-speak="${esc(b.sentences.join(' '))}" title="朗读整段">🔊整段</button>`;
+      html += `<button class="blk-tr" data-b="${bi}" title="用 AI 翻译这一段">译本段</button>`;
       html += '</p>';
       html += `<div class="para-tr" data-tr-for="${bi}" hidden></div>`;
     } else {
@@ -4023,6 +4365,10 @@ function renderDoc(blocks) {
         html += `<button class="tr-btn" data-g="${g}" title="翻译这句">译</button>`;
         html += '</div>';
       });
+      // 非连排块也给一个整块翻译按钮（放在块末尾）
+      if (b.sentences.length && ['option', 'num', 'question', 'section', 'direction'].indexOf(b.type) < 0) {
+        html += `<button class="blk-tr" data-b="${bi}" title="用 AI 翻译这一段">译本段</button>`;
+      }
     }
     html += '</div>';
   });
@@ -4037,6 +4383,18 @@ function renderDoc(blocks) {
 function bindReader() {
   const host = $('docBody');
   host.addEventListener('click', e => {
+    // 选句模式：点哪里都算选句，不触发选词
+    if (S.pickMode) {
+      const sentEl = e.target.closest('.sent');
+      // 但按钮本身要正常响应（朗读等）
+      if (!e.target.closest('button') && sentEl) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePick(parseInt(sentEl.dataset.g, 10), sentEl);
+        return;
+      }
+    }
+
     const wEl = e.target.closest('.w');
     if (wEl) {
       e.preventDefault();
@@ -4059,7 +4417,141 @@ function bindReader() {
       translateOne(parseInt(mini.dataset.g, 10));
       return;
     }
+
+    // 整段 AI 翻译
+    const blkTr = e.target.closest('.blk-tr');
+    if (blkTr) {
+      e.preventDefault();
+      e.stopPropagation();
+      translateBlock(parseInt(blkTr.dataset.b, 10));
+      return;
+    }
   });
+}
+
+// ==================== 选句翻译模式 ====================
+function enterPickMode() {
+  if (!S.flat.length) { toast('先导入文档', true); return; }
+  if (S.pickMode) { exitPickMode(); return; }
+
+  S.pickMode = true;
+  S.picked.clear();
+  S.pickEls.clear();
+  document.body.classList.add('pick-mode');
+  document.querySelectorAll('#docBody .sent').forEach(el => {
+    el.classList.add('pickable');
+  });
+  showPickBar();
+  toast('选句模式：点句子选中，再点取消');
+}
+
+function exitPickMode() {
+  S.pickMode = false;
+  S.picked.clear();
+  S.pickEls.clear();
+  document.body.classList.remove('pick-mode');
+  document.querySelectorAll('#docBody .sent').forEach(el => {
+    el.classList.remove('pickable', 'picked');
+  });
+  const bar = $('pickBar');
+  if (bar) bar.remove();
+}
+
+function togglePick(g, el) {
+  if (!Number.isFinite(g)) return;
+  if (S.picked.has(g)) {
+    S.picked.delete(g);
+    S.pickEls.delete(g);
+    el.classList.remove('picked');
+  } else {
+    S.picked.add(g);
+    S.pickEls.set(g, el);
+    el.classList.add('picked');
+  }
+  updatePickBar();
+}
+
+function showPickBar() {
+  let bar = $('pickBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pickBar';
+    bar.className = 'pick-bar';
+    bar.innerHTML =
+      '<span class="pk-count">已选 0 句</span>' +
+      '<button class="btn sm" id="pkAll">全选可见</button>' +
+      '<button class="btn sm" id="pkClear">清空</button>' +
+      '<button class="btn sm" id="pkCancel">退出</button>' +
+      '<button class="btn sm primary" id="pkGo">AI 翻译</button>';
+    document.body.appendChild(bar);
+
+    $('pkAll').addEventListener('click', () => {
+      document.querySelectorAll('#docBody .sent').forEach(el => {
+        const g = parseInt(el.dataset.g, 10);
+        if (!Number.isFinite(g)) return;
+        S.picked.add(g);
+        S.pickEls.set(g, el);
+        el.classList.add('picked');
+      });
+      updatePickBar();
+    });
+    $('pkClear').addEventListener('click', () => {
+      S.picked.clear();
+      S.pickEls.forEach(el => el.classList.remove('picked'));
+      S.pickEls.clear();
+      updatePickBar();
+    });
+    $('pkCancel').addEventListener('click', exitPickMode);
+    $('pkGo').addEventListener('click', async () => {
+      if (!S.picked.size) { toast('先点几句要翻译的', true); return; }
+
+      const hasKey = await window.AI.hasKey();
+      if (!hasKey) {
+        toast('还没有填 API Key，先填一个才能翻译', true);
+        openSettings();
+        return;
+      }
+
+      const gs = [...S.picked].sort((a, b) => a - b);
+      exitPickMode();
+      translateBatch(null, gs);
+    });
+  }
+  updatePickBar();
+}
+
+function updatePickBar() {
+  const bar = $('pickBar');
+  if (!bar) return;
+  bar.querySelector('.pk-count').textContent = '已选 ' + S.picked.size + ' 句';
+  const go = bar.querySelector('#pkGo');
+  if (go) {
+    go.disabled = S.picked.size === 0;
+    go.style.opacity = S.picked.size ? 1 : .5;
+  }
+}
+
+// 翻译一个整段（用 AI，按段送）
+async function translateBlock(bi) {
+  const items = S.flat.filter(x => x.bi === bi);
+  if (!items.length) { toast('这一段没有内容', true); return; }
+
+  const hasKey = await window.AI.hasKey();
+  if (!hasKey) {
+    toast('还没有填 API Key，先填一个才能翻译', true);
+    openSettings();
+    return;
+  }
+
+  const gs = items.map(x => x.g);
+  // 已经全翻过就直接重新显示
+  if (gs.every(g => S.tr[g])) {
+    items.forEach(it => renderTrFor(it.g, S.tr[it.g]));
+    toast('这一段已翻译过，已显示');
+    return;
+  }
+
+  translateBatch(null, gs);
 }
 
 // ==================== 导航历史（支持手机返回键 / 返回上一个词） ====================
@@ -4280,12 +4772,18 @@ function showWordCard(rawWord, displayWord) {
       </div>
       <div class="miss online-miss">
         <div>本地词库暂未收录 <b>${esc(shown)}</b></div>
-        <button class="btn primary sm" id="btnOnlineLookup" style="margin-top:10px">🌐 联网查询</button>
-        <div class="online-tip">查到后会存入本地，下次离线也能看</div>
+        <div class="lookup-btns">
+          <button class="btn primary sm" id="btnAiLookup">✨ AI 查词</button>
+          <button class="btn sm" id="btnOnlineLookup">🌐 免费查询</button>
+        </div>
+        <div class="online-tip">AI 能给出音标、词级、变形、词根；免费查询只给释义。查到后都存本地。</div>
       </div>
     `;
     bindStar(key, shown, null);
     bindSpeakButtons(card);
+
+    const ba = $('btnAiLookup');
+    if (ba) ba.addEventListener('click', () => lookupByAI(key, shown));
     const b = $('btnOnlineLookup');
     if (b) b.addEventListener('click', () => lookupOnline(key, shown));
     return;
@@ -4816,6 +5314,9 @@ S.trPara = S.trPara || {};  // bi -> 段落译文
 S.trBusy = false;
 S.trStop = false;
 S.trOptions = false;        // 是否翻译选项行（默认否，翻单词选项没意义）
+S.pickMode = false;         // 选句翻译模式
+S.picked = new Set();       // 已选中的句子 g
+S.pickEls = new Map();      // g -> 元素
 
 const TR_BATCH = 10;
 
@@ -4883,7 +5384,8 @@ async function translateOne(g) {
     sentEl.after(ph);
   }
 
-  const t = await requestTranslate([itemText(g)]);
+  const tr = await translateSentenceText(itemText(g), g);
+  const t = [tr.text];
   if (t[0]) {
     S.tr[g] = t[0];
     updateTrStats();
@@ -4981,6 +5483,67 @@ async function requestTranslate(lines) {
   return out;
 }
 
+// ==================== 统一整句翻译（生词本 / 复习共用） ====================
+// 优先级：本地缓存 → AI 整句 → 免费接口兜底
+// 返回 { text, from: 'cache'|'ai'|'free'|'', error }
+async function translateSentenceText(text, gOpt) {
+  const t = String(text || '').trim();
+  if (!t) return { text: '', from: '', error: '没有内容' };
+
+  // 1) 缓存：g 对应主文档里的句子
+  if (Number.isFinite(gOpt) && S.tr[gOpt]) {
+    return { text: S.tr[gOpt], from: 'cache' };
+  }
+  // 2) 缓存：按文本反查（复习里的句子可能不来自当前文档）
+  for (const k in S.tr) {
+    const gi = parseInt(k, 10);
+    if (!Number.isFinite(gi)) continue;
+    if (itemText(gi) === t && S.tr[k]) {
+      return { text: S.tr[k], from: 'cache' };
+    }
+  }
+
+  // 3) AI
+  try {
+    if (window.AI && await window.AI.hasKey()) {
+      const r = await window.AI.chat({
+        messages: [
+          { role: 'system', content: '把下面这句英文翻译成通顺自然的中文，只输出译文，不要解释、不要引号。' },
+          { role: 'user', content: t },
+        ],
+        temperature: 0.2,
+        maxTokens: 1200,
+        timeoutMs: 45000,
+      });
+      if (r.ok && r.text && r.text.trim()) {
+        const zh = r.text.trim();
+        // 写入缓存，下次不再花钱
+        if (Number.isFinite(gOpt)) {
+          S.tr[gOpt] = zh;
+          persistTr();
+          updateTrStats();
+        }
+        return { text: zh, from: 'ai' };
+      }
+    }
+  } catch (e) { /* 落到免费接口 */ }
+
+  // 4) 免费接口兜底
+  try {
+    const arr = await requestTranslate([t]);
+    if (arr && arr[0]) {
+      if (Number.isFinite(gOpt)) {
+        S.tr[gOpt] = arr[0];
+        persistTr();
+        updateTrStats();
+      }
+      return { text: arr[0], from: 'free' };
+    }
+  } catch (e) { /* 忽略 */ }
+
+  return { text: '', from: '', error: '翻译失败' };
+}
+
 // 找出需要翻译的句子索引
 function pendingTargets(scope) {
   let targets = [];
@@ -5032,9 +5595,14 @@ async function translateBatch(scope, range) {
 
   const hasKey = await window.AI.hasKey();
   if (!hasKey) {
-    toast('还没有填 API Key，请到设置里填一下', true);
+    toast('还没有填 API Key，先填一个才能翻译', true);
     openSettings();
     return;
+  }
+  // 提前提示一次，避免用户以为没反应
+  if (!S._trHinted) {
+    S._trHinted = true;
+    toast('开始翻译，按段落送给 AI，请稍候…');
   }
 
   let targets;
@@ -5564,15 +6132,15 @@ function renderWordbook() {
 
       btn.disabled = true;
       btn.textContent = '翻译中…';
-      const t = await requestTranslate([rec.source.sentence]);
+      const tr = await translateSentenceText(rec.source.sentence, rec.source.g);
       btn.disabled = false;
-      if (t[0]) {
+      if (tr.text) {
         box.hidden = false;
-        box.textContent = t[0];
-        btn.textContent = '收起译文';
+        box.textContent = tr.text;
+        btn.textContent = tr.from === 'ai' ? '收起译文 · AI' : '收起译文';
       } else {
         btn.textContent = '译整句';
-        toast('翻译失败，可能没联网', true);
+        toast('翻译失败：' + (tr.error || '没联网或未配 Key'), true);
       }
     });
   });
@@ -6054,8 +6622,86 @@ async function fetchOnlineWord(word) {
 }
 
 // 渲染联网查到的词条
+// ---------- AI 查词 ----------
+async function lookupByAI(key, shown) {
+  const btn = $('btnAiLookup');
+  const has = await window.AI.hasKey();
+  if (!has) {
+    toast('还没填 API Key，先到设置里填一个', true);
+    openSettings();
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '查询中…'; }
+
+  try {
+    const r = await window.AIWord.lookup(shown);
+    if (!r.ok) {
+      if (btn) { btn.disabled = false; btn.textContent = '✨ AI 查词'; }
+      toast('AI 查词失败：' + (r.error || '未知原因'), true);
+      return;
+    }
+
+    // 转成和免费查询一致的结构，复用渲染
+    const data = aiToOnlineShape(r.data, shown);
+
+    // 存本地，下次直接读
+    S.onlineDict = S.onlineDict || {};
+    S.onlineDict[key] = data;
+    try {
+      await dbPut('onlineDict', { key: 'od:' + key, payload: data });
+    } catch (e) { /* 存不下就算了 */ }
+
+    const card = $('wordCard');
+    const saved = S.words.get(key);
+    if (card) renderOnlineEntry(card, key, shown, data, saved);
+    toast('已由 AI 补全词条');
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ AI 查词'; }
+    toast('AI 查词失败：' + (e.message || '网络不通'), true);
+  }
+}
+
+// AI 返回结构 → 现有在线词条结构
+// 注意 renderOnlineEntry 用的字段名是 headword / ipa / forms[字符串数组]
+function aiToOnlineShape(d, fallbackWord) {
+  const head = d.word || fallbackWord;
+
+  const meanings = (d.defs || []).map(function (x) {
+    return { pos: x.pos || '', zh: x.zh || '', src: 'ai' };
+  });
+
+  const out = {
+    headword: head,
+    ipa: d.phonetic || '',
+    meanings: meanings,
+    level: d.level || '',
+    fromAI: true,
+  };
+
+  // 变形：renderOnlineEntry 期望是字符串数组，这里拼成「复数 abandon…」不好看，
+  // 直接给词形本身，和本地词库的显示方式一致
+  const forms = d.forms || {};
+  const order = ['plural', 'past', 'pastPart', 'ing', 'comp', 'sup', 'noun', 'adj', 'adv'];
+  const fl = [];
+  for (const k of order) {
+    if (forms[k]) fl.push(forms[k]);
+  }
+  if (fl.length) out.forms = fl;
+
+  // 词根：把 etym 包成 renderOnlineEntry 认识的 roots 结构
+  if (d.etym) out.roots = [{ root: '词源', meaning: d.etym }];
+
+  if (d.syn && d.syn.length) out.syn = d.syn;
+  if (d.ant && d.ant.length) out.ant = d.ant;
+
+  return out;
+}
+
 function renderOnlineEntry(card, key, shown, data, saved) {
-  const tags = ['<span class="tag online">联网收录</span>'];
+  const srcTag = data.fromAI
+    ? '<span class="tag ai">AI 补全</span>'
+    : '<span class="tag online">联网收录</span>';
+  const tags = [srcTag];
 
   // 等级标签
   if (data.level) {
@@ -6171,6 +6817,7 @@ function bindMobileUI() {
     readrange: 'btnReadRange',
     trpage: 'btnTranslatePage',
     trall: 'btnTranslateAll',
+    trpick: 'btnTranslatePick',
     toggleTr: 'btnToggleTr',
     docs: 'btnDocs',
     settings: 'btnSettings',
@@ -6226,16 +6873,31 @@ function bindMobileUI() {
 // 原理：从远端拉取更新清单 update.json，对比版本；有新版本就下载新的
 // index.html，存到本地后下次启动自动用它。不需要重装 App。
 
+// 镜像实测速度（2026-11，16MB 文件）：
+//   raw 直连     54 KB/s  ← 最快，但首包可能要等
+//   ghproxy.net  31 KB/s
+//   ghfast.top    5 KB/s
+//   jsDelivr      不可用（文件太大被拒）
+// 结论：没有一条快链路，16MB 大约要 5 分钟。顺序按实测速度排。
+const GH = 'https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/';
+
 S.update = {
-  manifestUrl: 'https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
+  manifestUrl: GH + 'update.json',
+  // 更新清单很小，速度差异不明显，能通就行
   mirrors: [
-    'https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
-    'https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
-    'https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/update.json',
+    GH + 'update.json',
+    'https://ghproxy.net/' + GH + 'update.json',
+    'https://ghfast.top/' + GH + 'update.json',
   ],
+  // 延迟到真正下载时再按 manifest 里的 url 拼镜像
+  ghBase: GH,
   currentVersion: window.__APP_VERSION__ || '1.0.0',
   storageKey: 'hotupdate:html',
   metaKey: 'hotupdate:meta',
+  // 单个地址的超时（毫秒）
+  timeoutMs: 12000,
+  // 慢于这个速度就判定为"卡住"，换下一个（字节/秒）
+  minSpeed: 25 * 1024,   // 低于这个速度就换源（约 25 KB/s）
 };
 
 // 启动时：如果本地存了新版 HTML 且版本高于当前，直接整页替换
@@ -6373,24 +7035,18 @@ function askText(title, defaultValue, hint) {
 
 // 检查更新
 async function checkUpdate(silent) {
-  let manifest = null;
-  for (const url of S.update.mirrors) {
-    try {
-      const r = await fetch(url, { cache: 'no-store' });
-      if (r.ok) {
-        // 用 text() 而非 json()，以便容忍 BOM / 前后杂字符
-        let txt = await r.text();
-        txt = txt.replace(/^\uFEFF/, '').trim();
-        const s = txt.indexOf('{');
-        const e = txt.lastIndexOf('}');
-        if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
-        manifest = JSON.parse(txt);
-        break;
-      }
-    } catch (e) { /* 试下个镜像 */ }
-  }
+  // 清单很小，用短超时逐个试；坏的镜像几秒就跳过
+  const manifest = await fetchFirstOk(S.update.mirrors, async (r) => {
+    let txt = await r.text();
+    txt = txt.replace(/^\uFEFF/, '').trim();
+    const a = txt.indexOf('{');
+    const b = txt.lastIndexOf('}');
+    if (a >= 0 && b > a) txt = txt.slice(a, b + 1);
+    try { return JSON.parse(txt); } catch (e) { return null; }
+  }, 8000);
+
   if (!manifest) {
-    if (!silent) toast('检查更新失败：网络不通', true);
+    if (!silent) toast('检查更新失败：所有镜像都连不上，请检查网络', true);
     return null;
   }
 
@@ -6416,62 +7072,221 @@ async function checkUpdate(silent) {
   return manifest;
 }
 
-// 下载新版本 HTML
-async function downloadUpdate(manifest) {
-  mask(true, '正在下载更新…');
+// ---------- 带超时的 fetch ----------
+// 关键：GitHub raw 在国内常见行为是「不报错也不返回」，单纯 await 会吊死，
+// 所以这里既看总时长，也看有没有数据进来。
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs || S.update.timeoutMs);
   try {
-    let html = null;
-    for (const url of [manifest.url, manifest.url2, manifest.url3]) {
-      if (!url) continue;
-      try {
-        const r = await fetch(url, { cache: 'no-store' });
-        if (r.ok) {
-          html = await r.text();
-          break;
-        }
-      } catch (e) {}
-    }
-    if (!html || html.length < 1000) throw new Error('下载失败');
-
-    // 优先存 IndexedDB（容量大，能放 5MB 的 HTML）
-    let stored = false;
-    try {
-      await dbPut('meta', {
-        k: 'hotupdate',
-        version: manifest.version,
-        html: html,
-        at: Date.now(),
-        notes: manifest.notes || '',
-        applied: null,
-      });
-      stored = true;
-    } catch (e) {
-      // 退路：localStorage（容量可能不够）
-      try {
-        localStorage.setItem(S.update.storageKey, html);
-        localStorage.setItem(S.update.metaKey, JSON.stringify({
-          version: manifest.version, at: Date.now(), notes: manifest.notes || '',
-        }));
-        stored = true;
-      } catch (e2) {
-        throw new Error('存储空间不足，无法保存更新');
-      }
-    }
-
-    if (!stored) throw new Error('保存失败');
-
-    mask(false);
-    askConfirm('更新已下载', '新版本已保存。现在重启以使用新版本吗？', '立即重启', '稍后').then(function(ok){
-      if (ok) location.reload();
-      else toast('下次打开会自动使用新版本');
-    });
-  } catch (e) {
-    mask(false);
-    toast('更新下载失败：' + (e.message || '未知错误'), true);
+    const r = await fetch(url, Object.assign({}, opts || {}, { signal: ctl.signal }));
+    return r;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-// 有新版本时在顶栏显示小红点
+// ---------- 按优先级尝试多个地址（小文件：清单） ----------
+async function fetchFirstOk(urls, parse, timeoutMs) {
+  const tried = [];
+  for (const url of urls) {
+    if (!url) continue;
+    try {
+      const r = await fetchWithTimeout(url, { cache: 'no-store' }, timeoutMs);
+      if (!r.ok) { tried.push(url + ' → HTTP ' + r.status); continue; }
+      const out = await parse(r);
+      if (out) return out;
+      tried.push(url + ' → 内容无效');
+    } catch (e) {
+      const msg = (e && e.name === 'AbortError') ? '超时' : ((e && e.message) || String(e));
+      tried.push(url + ' → ' + msg);
+    }
+  }
+  if (tried.length) console.warn('所有地址都失败：\n' + tried.join('\n'));
+  return null;
+}
+
+// ============ 下载进度条 ============
+function showDlBar(on, text, pct) {
+  let bar = $('dlBar');
+  if (!on) { if (bar) bar.classList.remove('show'); return; }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'dlBar';
+    bar.className = 'dl-bar';
+    bar.innerHTML =
+      '<div class="dl-inner">' +
+        '<span class="dl-text"></span>' +
+        '<span class="dl-track"><span class="dl-fill"></span></span>' +
+        '<span class="dl-size"></span>' +
+      '</div>';
+    const top = document.querySelector('.topbar');
+    if (top) top.after(bar); else document.body.appendChild(bar);
+  }
+  bar.classList.add('show');
+  bar.querySelector('.dl-text').textContent = text || '正在下载…';
+  const p = Math.max(0, Math.min(100, pct || 0));
+  bar.querySelector('.dl-fill').style.width = p + '%';
+  bar.querySelector('.dl-size').textContent =
+    (p > 0 && p < 100) ? p + '%' : '';
+}
+
+// ============ 流式下载：带进度 + 卡死检测 ============
+async function fetchHtmlWithProgress(url, onProgress, timeoutMs) {
+  const ctl = new AbortController();
+
+  // 整体兜底：给足时间（慢速网络 16MB 可能要几分钟）
+  const hardTimer = setTimeout(() => ctl.abort(), timeoutMs || 300000);
+
+  // 卡死判定：只有「完全没有新数据」才算卡死。
+  // 实测 ghproxy.net 只有 47 KB/s，但数据是持续来的，不能判成卡死。
+  let lastDataAt = Date.now();
+  const STALL_MS = 25000;
+  const stallTimer = setInterval(() => {
+    if (Date.now() - lastDataAt > STALL_MS) {
+      clearInterval(stallTimer);
+      ctl.abort();
+    }
+  }, 1000);
+
+  try {
+    const r = await fetch(url, { cache: 'no-store', signal: ctl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    const total = parseInt(r.headers.get('content-length') || '0', 10) || 0;
+
+    if (!r.body || !r.body.getReader) {
+      const t = await r.text();
+      onProgress(t.length, total, t.length);
+      return t;
+    }
+
+    const reader = r.body.getReader();
+    const chunks = [];
+    let got = 0;
+    const t0 = Date.now();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lastDataAt = Date.now();
+      chunks.push(value);
+      got += value.length;
+
+      // 速度太低就主动放弃（换成下一个地址更快）
+      const secs = (Date.now() - t0) / 1000;
+      if (secs > 12) {
+        const kbps = got / 1024 / secs;
+        if (kbps < (S.update.minSpeed / 1024)) {
+          throw new Error('太慢（' + Math.round(kbps) + ' KB/s），换下一个地址');
+        }
+      }
+
+      onProgress(got, total, got);
+    }
+
+    const all = new Uint8Array(got);
+    let off = 0;
+    for (const c of chunks) { all.set(c, off); off += c.length; }
+    return new TextDecoder('utf-8').decode(all);
+
+  } finally {
+    clearTimeout(hardTimer);
+    clearInterval(stallTimer);
+  }
+}
+
+async function downloadUpdate(manifest) {
+  // 按优先级拼出候选地址：清单里给的 url 各自再套一层可用镜像
+  const ghPath = 'zzzz1007/cet6-reader/main/index.html';
+  const base = 'https://raw.githubusercontent.com/' + ghPath;
+  const urls = [
+    base,                                    // 实测 54 KB/s，最快
+    'https://ghproxy.net/' + base,           // 31 KB/s
+    'https://ghfast.top/' + base,            // 5 KB/s，最后才用
+    manifest.url, manifest.url2, manifest.url3,
+  ].filter(Boolean);
+
+  mask(false);
+  showDlBar(true, '正在连接…', 0);
+
+  let html = null;
+  let lastErr = '';
+
+  for (const url of urls) {
+    if (!url) continue;
+    try {
+      showDlBar(true, '正在下载更新…（文件较大，可能要几分钟，别退出）', 0);
+      html = await fetchHtmlWithProgress(url, (got, total) => {
+        const pct = total ? Math.round(got / total * 100) : 0;
+        const mb = (got / 1024 / 1024).toFixed(1);
+        const tm = total ? ' / ' + (total / 1024 / 1024).toFixed(1) + ' MB' : ' MB';
+        showDlBar(true, '正在下载更新… ' + mb + tm, pct);
+      });
+      if (html && html.length > 1000) break;
+      html = null;
+      lastErr = url + ' 内容为空';
+    } catch (e) {
+      const msg = (e && e.name === 'AbortError')
+        ? '太慢或卡住'
+        : ((e && e.message) || String(e));
+      lastErr = msg;
+      console.warn('下载失败，换下一个地址：', url, msg);
+      html = null;
+    }
+  }
+
+  showDlBar(false);
+
+  if (!html || html.length < 1000) {
+    toast('下载失败：' + (lastErr || '所有地址都不可用') + '，请稍后重试', true);
+    return;
+  }
+
+  showDlBar(true, '正在保存…', 100);
+
+  // 优先存 IndexedDB（容量大）
+  let stored = false;
+  try {
+    await dbPut('meta', {
+      k: 'hotupdate',
+      key: 'hotupdate',
+      version: manifest.version,
+      html: html,
+      at: Date.now(),
+      notes: manifest.notes || '',
+      applied: null,
+    });
+    stored = true;
+  } catch (e) {
+    try {
+      localStorage.setItem(S.update.storageKey, html);
+      localStorage.setItem(S.update.metaKey, JSON.stringify({
+        version: manifest.version, at: Date.now(), notes: manifest.notes || '',
+      }));
+      stored = true;
+    } catch (e2) {
+      showDlBar(false);
+      toast('存储空间不足，无法保存更新。可以卸载重装新 APK', true);
+      return;
+    }
+  }
+
+  showDlBar(false);
+
+  if (!stored) { toast('保存失败', true); return; }
+
+  askConfirm(
+    '更新已下载',
+    ('新版本 ' + manifest.version + ' 已保存（' + (html.length / 1024 / 1024).toFixed(1) + ' MB）。\n') +
+    '现在重启以使用新版本吗？',
+    '立即重启', '稍后'
+  ).then(function (ok) {
+    if (ok) location.reload();
+  });
+}
+
 function showUpdateBadge(version, manifest) {
   const btn = $('btnUpdate');
   if (!btn) return;
@@ -7180,15 +7995,15 @@ function bindFeedbackSentence(root) {
 
       btn.disabled = true;
       btn.textContent = '翻译中…';
-      const t = await requestTranslate([sentEl.textContent.trim()]);
+      const tr = await translateSentenceText(sentEl.textContent.trim(), sid);
       btn.disabled = false;
-      if (t[0]) {
+      if (tr.text) {
         box.hidden = false;
-        box.textContent = t[0];
-        btn.textContent = '收起译文';
+        box.textContent = tr.text;
+        btn.textContent = tr.from === 'ai' ? '收起译文 · AI' : '收起译文';
       } else {
         btn.textContent = '译整句';
-        toast('翻译失败，可能没联网', true);
+        toast('翻译失败：' + (tr.error || '没联网或未配 Key'), true);
       }
     });
   });
@@ -7381,15 +8196,15 @@ function bindCardSentence() {
 
       trBtn.disabled = true;
       trBtn.textContent = '翻译中…';
-      const t = await requestTranslate([q.item.source.sentence]);
+      const tr = await translateSentenceText(q.item.source.sentence, q.item.source.g);
       trBtn.disabled = false;
-      if (t[0]) {
+      if (tr.text) {
         box.hidden = false;
-        box.textContent = t[0];
-        trBtn.textContent = '收起译文';
+        box.textContent = tr.text;
+        trBtn.textContent = tr.from === 'ai' ? '收起译文 · AI' : '收起译文';
       } else {
         trBtn.textContent = '译整句';
-        toast('翻译失败，可能没联网', true);
+        toast('翻译失败：' + (tr.error || '没联网或未配 Key'), true);
       }
     });
   }
@@ -7846,6 +8661,24 @@ async function boot() {
 
   const btnSet = $('btnSettings');
   if (btnSet) btnSet.addEventListener('click', openSettings);
+
+  const btnPick = $('btnTranslatePick');
+  if (btnPick) btnPick.addEventListener('click', enterPickMode);
+
+  // 手机端常驻「译」按钮
+  const btnTrM = $('btnTrMobile');
+  if (btnTrM) {
+    btnTrM.addEventListener('click', async () => {
+      if (!S.flat.length) { toast('先导入文档', true); return; }
+      const has = await window.AI.hasKey();
+      if (!has) {
+        toast('还没有填 AI 的 API Key，先填一个', true);
+        openSettings();
+        return;
+      }
+      openTranslateRangeDlg();
+    });
+  }
   const btnReview = $('btnReview');
   if (btnReview) btnReview.addEventListener('click', startReviewUI);
   const btnEdit = $('btnEdit');
@@ -7947,11 +8780,39 @@ window.__APP__ = {
   openTranslateRangeDlg: openTranslateRangeDlg,
   openSettings: openSettings,
   itemText: itemText,
+  translateBlock: translateBlock,
+  enterPickMode: enterPickMode,
+  exitPickMode: exitPickMode,
+  renderDoc: renderDoc,
+  aiToOnlineShape: aiToOnlineShape,
+  translateSentenceText: translateSentenceText,
+  // 更新模块（调试用）
+  compareVersion: compareVersion,
+  showDlBar: showDlBar,
+  fetchHtmlWithProgress: fetchHtmlWithProgress,
+  fetchFirstOk: fetchFirstOk,
+  downloadUpdate: downloadUpdate,
+  checkUpdateProbe: function () {
+    return fetchFirstOk(S.update.mirrors, async (r) => {
+      let txt = await r.text();
+      txt = txt.replace(/^\uFEFF/, '').trim();
+      const a = txt.indexOf('{');
+      const b = txt.lastIndexOf('}');
+      if (a >= 0 && b > a) txt = txt.slice(a, b + 1);
+      try { return JSON.parse(txt); } catch (e) { return null; }
+    }, 8000);
+  },
 };
 
 // 供内部模块互调
 window.persistTr = persistTr;
 window.restoreTr = restoreTr;
+window.enterPickMode = enterPickMode;
+window.exitPickMode = exitPickMode;
+window.translateBlock = translateBlock;
+window.renderDoc = renderDoc;
+window.translateSentenceText = translateSentenceText;
+window.aiToOnlineShape = aiToOnlineShape;
 
 })();
 
