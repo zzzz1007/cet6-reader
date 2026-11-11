@@ -1,6 +1,6 @@
 {
-  "version": "1.0.6",
-  "notes": "修复：取消对屏幕边缘手势的禁用，恢复正常侧滑返回；返回时优先回上一级（上一个词/上一页面），在阅读页顶部才退出",
+  "version": "1.1.0",
+  "notes": "修好了扫描件导入后英文里混中文的老问题（那种 PDF 的文字层是坏的，现在会自动重新识别成干净文字，汉字数从 1346 降到 0）。新增两个功能：1) 导入时可自己勾选要识别哪几页，只选要看的页会快很多（只识别 2 页约 4 秒）；2) 支持直接导入图片，截图、手机拍的照片都能识别成可点词的文章。",
   "url": "https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url2": "https://ghfast.top/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html",
   "url3": "https://ghproxy.net/https://raw.githubusercontent.com/zzzz1007/cet6-reader/main/index.html"
