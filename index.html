@@ -2033,6 +2033,134 @@ body.pick-mode .w:hover { background: none; }
   border-color: #d3e0ff;
 }
 
+/* AI 总开关 + 单句译文区 */
+.ais-switch-row {
+  padding: 10px 0 2px;
+  border-top: 1px solid #f0f2f5;
+  margin-top: 4px;
+}
+.ais-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #374151;
+  user-select: none;
+}
+.ais-switch input { cursor: pointer; }
+
+/* 行内段落的单句译文区 */
+.sent-tr-inline {
+  margin: 6px 0 12px;
+  padding: 8px 12px;
+  background: #f7f9fc;
+  border-left: 3px solid #b9cdf5;
+  border-radius: 0 7px 7px 0;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sent-tr-inline[hidden] { display: none; }
+.sent-tr-inline .sit-row {
+  padding-left: 2px;
+}
+
+/* ---------- 文档库文件夹 ---------- */
+.folder-tabs {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 13px;
+}
+.folder-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 13px;
+  font-size: 13px;
+  color: #4b5563;
+  background: #f7f9fc;
+  border: 1px solid #e3e8f0;
+  border-radius: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: .12s;
+}
+.folder-tab:hover { background: #eef2f8; border-color: #cfd8e6; }
+.folder-tab.on {
+  background: #eef3ff;
+  border-color: #3b6ef5;
+  color: #2a56d6;
+  font-weight: 600;
+}
+.folder-tab .ft-n {
+  font-size: 11px;
+  color: #9aa1ad;
+  background: #fff;
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 16px;
+  text-align: center;
+}
+.folder-tab.on .ft-n { color: #2a56d6; }
+
+.folder-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  background: #f7f9fc;
+  border: 1px solid #e8ecf3;
+  border-radius: 9px;
+}
+.folder-bar .fb-name { font-size: 13.5px; font-weight: 600; color: #374151; flex: 1; }
+
+.lib-folder {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.pick-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 10px 0 14px;
+}
+.pick-folder-list .btn {
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+}
+
+/* ---------- 生词本筛选 ---------- */
+.wb-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.wb-filter select {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  border: 1.5px solid #d8dee9;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  max-width: 220px;
+}
+
 </style>
 </head>
 <body>
@@ -2181,6 +2309,16 @@ body.pick-mode .w:hover { background: none; }
         <div class="ais-hint">Key 只存在这台设备上，不会上传到任何服务器。</div>
       </div>
 
+      <div class="ais-field ais-switch-row">
+        <label class="ais-switch">
+          <input type="checkbox" id="aisUseAI" checked>
+          <span>启用 AI 翻译</span>
+        </label>
+        <div class="ais-hint">
+          关掉后：单句「译」按钮改用免费接口（只有释义，质量一般）；整段翻译不可用。
+        </div>
+      </div>
+
       <div class="ais-test" id="aisTestResult"></div>
 
       <div class="ais-cost" id="aisCost"></div>
@@ -2201,7 +2339,7 @@ body.pick-mode .w:hover { background: none; }
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.5.1';</script>
+<script>window.__APP_VERSION__ = '1.7.0';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -5281,6 +5419,12 @@ async function addWord(key, headword, entry) {
     ts: Date.now(),
     source: {
       doc: S.doc ? S.doc.name : '',
+      docId: S.doc ? (S.doc.id || S.docId || '') : '',
+      folder: (function () {
+        if (!S.doc) return '';
+        const rec = S.docList.find(d => d.id === (S.doc.id || S.docId));
+        return rec ? (rec.folder || '') : '';
+      })(),
       sentNo: ctx ? ctx.g + 1 : 0,
       sentence: ctx ? ctx.text : '',
     },
@@ -5315,6 +5459,7 @@ S.trBusy = false;
 S.trStop = false;
 S.trOptions = false;        // 是否翻译选项行（默认否，翻单词选项没意义）
 S.pickMode = false;         // 选句翻译模式
+S.useAI = true;             // 全局：是否用 AI 翻译（关掉则一律走免费接口）
 S.picked = new Set();       // 已选中的句子 g
 S.pickEls = new Map();      // g -> 元素
 
@@ -5334,6 +5479,7 @@ function itemText(g) {
 }
 
 // ---- 单句翻译 ----
+// 关键：单句译文只控制「自己这一句」，绝不碰整段译文区（.para-tr）
 async function translateOne(g) {
   const item = S.flat.find(x => x.g === g);
   if (!item) return;
@@ -5341,42 +5487,30 @@ async function translateOne(g) {
   if (!sentEl) return;
 
   const isInline = sentEl.classList.contains('inline');
+  const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
 
-  // 已有译文 → 收起 / 展开
+  // ---- 已翻译过：切换这一句的显示/隐藏 ----
   if (S.tr[g]) {
     if (isInline) {
-      const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
-      const box = blk && blk.querySelector('.para-tr');
-      if (box) {
-        if (!box.hidden) { box.hidden = true; }
-        else { renderParaTr(blk, item.bi); }
-      }
-      return;
-    }
-    const existing = sentEl.nextElementSibling;
-    if (existing && existing.classList.contains('sent-tr')) {
-      existing.remove();
+      toggleInlineSentTr(blk, g, S.tr[g]);
     } else {
-      const ph = document.createElement('div');
-      ph.className = 'sent-tr';
-      ph.textContent = S.tr[g];
-      sentEl.after(ph);
+      const existing = sentEl.nextElementSibling;
+      if (existing && existing.classList.contains('sent-tr')) {
+        existing.remove();
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'sent-tr';
+        ph.textContent = S.tr[g];
+        sentEl.after(ph);
+      }
     }
     return;
   }
 
-  // 未翻译：先占位
+  // ---- 未翻译：先占位，再请求 ----
   let ph = null;
   if (isInline) {
-    // 行内句子：在段落下方提示
-    const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
-    if (blk) {
-      const box = blk.querySelector('.para-tr');
-      if (box) {
-        box.hidden = false;
-        box.innerHTML = '<span class="tr-loading">翻译中…</span>';
-      }
-    }
+    showInlineSentLoading(blk, g);
   } else {
     ph = document.createElement('div');
     ph.className = 'sent-tr loading';
@@ -5385,22 +5519,102 @@ async function translateOne(g) {
   }
 
   const tr = await translateSentenceText(itemText(g), g);
-  const t = [tr.text];
-  if (t[0]) {
-    S.tr[g] = t[0];
+  if (tr.text) {
+    S.tr[g] = tr.text;
     updateTrStats();
     persistTr();
-    renderTrFor(g, t[0]);
+    if (isInline) {
+      setInlineSentTr(blk, g, tr.text);
+    } else {
+      if (ph) ph.remove();
+      const d = document.createElement('div');
+      d.className = 'sent-tr';
+      d.textContent = tr.text;
+      sentEl.after(d);
+    }
   } else {
     if (isInline) {
-      const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
-      const box = blk && blk.querySelector('.para-tr');
-      if (box) box.innerHTML = '<span class="tr-fail">翻译失败，可能没联网</span>';
+      setInlineSentTr(blk, g, '（翻译失败：' + (tr.error || '没联网或未配 Key') + '）', true);
     } else if (ph) {
       ph.classList.remove('loading');
       ph.textContent = '翻译失败（可能没联网或接口不可用），原文仍可正常阅读和取词。';
     }
   }
+}
+
+// ---------- 行内段落的「单句译文」独立管理 ----------
+function ensureInlineHost(blk) {
+  let host = blk.querySelector('.sent-tr-inline');
+  if (!host) {
+    host = document.createElement('div');
+    host.className = 'sent-tr-inline';
+    const paraTr = blk.querySelector('.para-tr');
+    if (paraTr) paraTr.after(host);
+    else blk.appendChild(host);
+  }
+  return host;
+}
+
+function showInlineSentLoading(blk, g) {
+  const host = ensureInlineHost(blk);
+  let row = host.querySelector('[data-tr-g="' + g + '"]');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'sit-row loading';
+    row.dataset.trG = String(g);
+    host.appendChild(row);
+  }
+  row.textContent = '翻译中…';
+  host.hidden = false;
+  sortInlineRows(host);
+}
+
+function setInlineSentTr(blk, g, text, isErr) {
+  const host = ensureInlineHost(blk);
+  let row = host.querySelector('[data-tr-g="' + g + '"]');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'sit-row';
+    row.dataset.trG = String(g);
+    host.appendChild(row);
+  }
+  row.classList.remove('loading');
+  row.classList.toggle('err', !!isErr);
+  row.textContent = text;
+  host.hidden = false;
+  sortInlineRows(host);
+  // 整段译文收起，避免同一段两份
+  const paraTr = blk.querySelector('.para-tr');
+  if (paraTr) paraTr.hidden = true;
+}
+
+// 切换某一句的单句译文显示/隐藏
+function toggleInlineSentTr(blk, g, text) {
+  if (!blk) return;
+  const host = blk.querySelector('.sent-tr-inline');
+  let row = host && host.querySelector('[data-tr-g="' + g + '"]');
+
+  if (row && !row.hidden) {
+    row.hidden = true;
+  } else if (row) {
+    row.hidden = false;
+    host.hidden = false;
+  } else {
+    setInlineSentTr(blk, g, text);
+    return;
+  }
+
+  // 全都隐藏了就收起容器
+  if (host) {
+    const visible = [...host.querySelectorAll('[data-tr-g]')].some(r => !r.hidden);
+    host.hidden = !visible;
+  }
+}
+
+function sortInlineRows(host) {
+  const rows = [...host.querySelectorAll('[data-tr-g]')];
+  rows.sort((a, b) => parseInt(a.dataset.trG, 10) - parseInt(b.dataset.trG, 10));
+  rows.forEach(r => host.appendChild(r));
 }
 
 // ---- 批量翻译核心（浏览器直连有道，失败自动降级） ----
@@ -5503,9 +5717,9 @@ async function translateSentenceText(text, gOpt) {
     }
   }
 
-  // 3) AI
+  // 3) AI（受全局开关控制）
   try {
-    if (window.AI && await window.AI.hasKey()) {
+    if (S.useAI && window.AI && await window.AI.hasKey()) {
       const r = await window.AI.chat({
         messages: [
           { role: 'system', content: '把下面这句英文翻译成通顺自然的中文，只输出译文，不要解释、不要引号。' },
@@ -5593,13 +5807,18 @@ function groupByBlock(targets) {
 async function translateBatch(scope, range) {
   if (S.trBusy) { toast('正在翻译中，请稍候'); return; }
 
+  // 关了 AI 开关：整段翻译不可用（整段依赖 AI），提示用免费单句
+  if (!S.useAI) {
+    toast('AI 翻译已关闭，可在设置里打开；关闭时只能用单句的免费翻译', true);
+    return;
+  }
+
   const hasKey = await window.AI.hasKey();
   if (!hasKey) {
     toast('还没有填 API Key，先填一个才能翻译', true);
     openSettings();
     return;
   }
-  // 提前提示一次，避免用户以为没反应
   if (!S._trHinted) {
     S._trHinted = true;
     toast('开始翻译，按段落送给 AI，请稍候…');
@@ -5675,6 +5894,23 @@ async function translateBatch(scope, range) {
   }
 }
 
+// UI 偏好（AI 开关等）持久化
+function saveUiPrefs() {
+  try {
+    localStorage.setItem('ui:prefs', JSON.stringify({ useAI: S.useAI }));
+  } catch (e) {}
+}
+
+function loadUiPrefs() {
+  try {
+    const s = localStorage.getItem('ui:prefs');
+    if (s) {
+      const o = JSON.parse(s);
+      if (typeof o.useAI === 'boolean') S.useAI = o.useAI;
+    }
+  } catch (e) {}
+}
+
 // ==================== AI 设置 ====================
 const COST_HINT = {
   deepseek: '高峰约 7 分钱一份真题，空闲时段减半（3–4 分）',
@@ -5690,6 +5926,17 @@ function openSettings() {
   const selM = $('aisModel');
   const inpK = $('aisKey');
   const result = $('aisTestResult');
+
+  // 初始化开关
+  const chkAI = $('aisUseAI');
+  if (chkAI) {
+    chkAI.checked = S.useAI !== false;
+    chkAI.addEventListener('change', () => {
+      S.useAI = chkAI.checked;
+      saveUiPrefs();
+      toast(S.useAI ? '已启用 AI 翻译' : '已关闭 AI 翻译，改用免费接口');
+    });
+  }
 
   window.AI.loadConfig().then(cfg => {
     selP.value = cfg.provider || 'deepseek';
@@ -5862,23 +6109,30 @@ function openTranslateRangeDlg() {
 }
 function renderTrFor(g, text) {
   const item = S.flat.find(x => x.g === g);
+  if (!item) return;
 
-  // 连排段落：汇总到段落译文区块
-  const blk = document.querySelector(`#docBody .blk[data-b="${item ? item.bi : -1}"]`);
+  const blk = document.querySelector(`#docBody .blk[data-b="${item.bi}"]`);
+
+  // 连排段落：单句译文单独挂在句子后面，不碰整段译文区
   if (blk && blk.classList.contains('flow')) {
-    renderParaTr(blk, item.bi);
+    renderInlineSentTr(blk, g, text);
     return;
   }
 
   // 逐行块：插在该句下方
   const sentEl = document.querySelector(`.sent[data-g="${g}"]`);
-    if (!sentEl) return;
+  if (!sentEl) return;
   const old = sentEl.nextElementSibling;
   if (old && old.classList.contains('sent-tr')) old.remove();
   const ph = document.createElement('div');
   ph.className = 'sent-tr';
   ph.textContent = text;
   sentEl.after(ph);
+}
+
+// 行内段落的单句译文：统一走 setInlineSentTr
+function renderInlineSentTr(blk, g, text) {
+  setInlineSentTr(blk, g, text);
 }
 
 // 段落译文：把该段所有已译句子合并显示
@@ -5893,6 +6147,10 @@ function renderParaTr(blk, bi) {
   if (!parts.length) { box.hidden = true; return; }
   box.hidden = false;
   box.innerHTML = parts.map(esc).join(' ');
+
+  // 整段译文出来后，清掉单句译文行（避免同一段出现两份译文）
+  const sit = blk.querySelector('.sent-tr-inline');
+  if (sit) { sit.innerHTML = ''; sit.hidden = true; }
 }
 
 // 进度条
@@ -5980,7 +6238,11 @@ function updateWbCount() {
 async function loadWords() {
   const rows = await dbGetAll('words');
   S.words.clear();
-  rows.forEach(r => S.words.set(r.key, r));
+  rows.forEach(r => {
+    // '__od__' 开头的是「联网/AI 查到的词条缓存」，不是生词本条目
+    if (!r || !r.key || r.key.indexOf('__od__') === 0) return;
+    S.words.set(r.key, r);
+  });
   updateWbCount();
 }
 
@@ -6002,9 +6264,88 @@ function toggleWordbook() {
   $('btnWordbook').classList.toggle('primary', !S.wbOpen);
 }
 
+// 生成「按来源筛选」下拉（文档库文件夹 + 单个文档）
+function wbFilterSelect(id, cur) {
+  let opts = '<option value="__all__">全部来源</option>';
+
+  // 文件夹分组
+  const usedFolders = new Set();
+  S.words.forEach(r => { if (r.source && r.source.folder) usedFolders.add(r.source.folder); });
+  const folders = S.folders.filter(f => usedFolders.has(f.id));
+  if (folders.length) {
+    opts += '<optgroup label="文件夹">';
+    folders.forEach(f => {
+      opts += '<option value="f:' + esc(f.id) + '">📁 ' + esc(f.name) + '</option>';
+    });
+    opts += '</optgroup>';
+  }
+
+  // 单个文档
+  const usedDocs = new Set();
+  S.words.forEach(r => {
+    const n = r.source && r.source.doc;
+    if (n) usedDocs.add(n);
+  });
+  if (usedDocs.size) {
+    opts += '<optgroup label="文档">';
+    [...usedDocs].sort().forEach(n => {
+      const d = S.docList.find(x => x.name === n);
+      const val = d ? ('d:' + d.id) : ('dname:' + n);
+      opts += '<option value="' + esc(val) + '">' + esc(n) + '</option>';
+    });
+    opts += '</optgroup>';
+  }
+
+  // 回填当前值
+  let html = opts;
+  if (cur && cur !== '__all__') {
+    html = html.replace('value="' + cur.replace(/"/g, '&quot;') + '"',
+      'value="' + cur.replace(/"/g, '&quot;') + '" selected');
+    // 老数据用文档名
+    if (cur.indexOf('dname:') === 0) {
+      html = html.replace('value="dname:' + cur.slice(6) + '"', 'value="dname:' + cur.slice(6) + '" selected');
+    }
+  }
+
+  return '<select id="' + id + '" class="wb-scope">' + html + '</select>';
+}
+
+// 按筛选条件过滤生词
+function filterWordsByScope(rows, filter) {
+  if (!filter || filter === '__all__') return rows;
+  if (filter.indexOf('f:') === 0) {
+    const fid = filter.slice(2);
+    // 优先看 source.folder；老数据没有就去文档里反查
+    return rows.filter(r => {
+      if (r.source && r.source.folder) return r.source.folder === fid;
+      const docId = r.source && r.source.docId;
+      if (docId) {
+        const d = S.docList.find(x => x.id === docId);
+        return d && d.folder === fid;
+      }
+      const d = S.docList.find(x => x.name === (r.source && r.source.doc));
+      return d && d.folder === fid;
+    });
+  }
+  if (filter.indexOf('dname:') === 0) {
+    const dn = filter.slice(6);
+    return rows.filter(r => r.source && r.source.doc === dn);
+  }
+  if (filter.indexOf('d:') === 0) {
+    const did = filter.slice(2);
+    return rows.filter(r => {
+      if (r.source && r.source.docId) return r.source.docId === did;
+      const d = S.docList.find(x => x.id === did);
+      return d && r.source && r.source.doc === d.name;
+    });
+  }
+  return rows;
+}
+
 function renderWordbook() {
   const wb = $('wordbook');
-  const rows = [...S.words.values()].sort((a, b) => b.ts - a.ts);
+  const allRows = [...S.words.values()].sort((a, b) => b.ts - a.ts);
+  const rows = filterWordsByScope(allRows, S.wbFilter);
 
   const q = S.search.trim().toLowerCase();
   const filtered = q
@@ -6022,9 +6363,10 @@ function renderWordbook() {
   let html = `
     <div class="wb-head">
       <div class="wb-title">生词本</div>
-      <div class="wb-stat">共 ${rows.length} 个词 · ${dates.length} 天</div>
+      <div class="wb-stat">${rows.length === allRows.length ? '共' : '筛选'} ${rows.length} 个词 · ${dates.length} 天</div>
       <div class="spacer"></div>
       <input class="wb-search" id="wbSearch" placeholder="搜索单词或释义" value="${esc(S.search)}">
+      ${wbFilterSelect('wbFilter', S.wbFilter)}
       <button class="btn" id="btnExport">导出</button>
       <button class="btn" id="btnBack">返回阅读</button>
     </div>
@@ -6087,6 +6429,15 @@ function renderWordbook() {
     ni.focus();
     ni.setSelectionRange(pos, pos);
   });
+
+  // 来源筛选
+  const sel = $('wbFilter');
+  if (sel) {
+    sel.addEventListener('change', () => {
+      S.wbFilter = sel.value;
+      renderWordbook();
+    });
+  }
   wb.querySelectorAll('.wb-del').forEach(b => {
     b.addEventListener('click', async e => {
       e.stopPropagation();
@@ -6165,6 +6516,80 @@ function exportWords() {
 
 // ==================== 文档库 ====================
 S.docList = [];
+S.wbFilter = '__all__';  // 生词本筛选：__all__ / f:文件夹id / d:文档id
+S.rvFilter = '__all__';  // 复习筛选，同上
+S.folders = [];          // [{ id, name, createdAt }]
+S.curFolder = '__all__'; // 当前查看的文件夹：__all__ / __none__ / 文件夹 id
+
+async function loadFolders() {
+  try {
+    const rec = await dbGet('meta', 'folders');
+    S.folders = (rec && rec.value) || [];
+  } catch (e) { S.folders = []; }
+  return S.folders;
+}
+
+async function saveFolders() {
+  try {
+    await dbPut('meta', { key: 'folders', value: S.folders });
+  } catch (e) { console.warn('文件夹保存失败', e); }
+}
+
+async function createFolder(name) {
+  const n = String(name || '').trim().slice(0, 40);
+  if (!n) { toast('文件夹名不能为空', true); return null; }
+  const f = { id: 'f' + Date.now() + Math.random().toString(36).slice(2, 5), name: n, createdAt: Date.now() };
+  S.folders.push(f);
+  await saveFolders();
+  return f;
+}
+
+async function renameFolder(id) {
+  const f = S.folders.find(x => x.id === id);
+  if (!f) return;
+  const name = await askText('文件夹改名', f.name, '最多 40 个字');
+  if (name === null) return;
+  const n = String(name).trim().slice(0, 40);
+  if (!n) { toast('名字不能为空', true); return; }
+  f.name = n;
+  await saveFolders();
+  renderLibrary();
+  toast('已改名');
+}
+
+async function deleteFolder(id) {
+  const f = S.folders.find(x => x.id === id);
+  if (!f) return;
+  const ok = await askConfirm('删除文件夹',
+    '删除「' + f.name + '」？里面的文档不会被删除，会移到"未分类"。', '删除', '取消');
+  if (!ok) return;
+
+  // 把该文件夹里的文档移到未分类
+  for (const d of S.docList) {
+    if (d.folder === id) {
+      d.folder = null;
+      d.updatedAt = Date.now();
+      await dbPut('docs', d);
+    }
+  }
+  S.folders = S.folders.filter(x => x.id !== id);
+  await saveFolders();
+  await loadDocList();
+  if (S.curFolder === id) S.curFolder = '__all__';
+  renderLibrary();
+  toast('文件夹已删除，文档已移到未分类');
+}
+
+async function moveDocToFolder(docId, folderId) {
+  const d = S.docList.find(x => x.id === docId);
+  if (!d) return;
+  d.folder = folderId || null;
+  d.updatedAt = Date.now();
+  await dbPut('docs', d);
+  await loadDocList();
+  renderLibrary();
+  toast(folderId ? '已移入文件夹' : '已移出文件夹');
+}
 S.editing = false;
 S.docId = null;
 
@@ -6191,6 +6616,7 @@ async function saveDoc(blocks, name, opts) {
       words: blocks.reduce(function (n, b) { return n + ((b.text || '').match(/[A-Za-z][A-Za-z'-]*/g) || []).length; }, 0),
     },
     parentId: opts.parentId || null,
+    folder: opts.folder || null,
     ext: opts.ext || 'doc',
     createdAt: opts.createdAt || now,
     updatedAt: now,
@@ -6225,6 +6651,7 @@ async function deleteDoc(id) {
 async function showLibrary() {
   const wb = $('wordbook');
   await loadDocList();          // 每次都重新读，保证列表最新
+  await loadFolders();
   renderLibrary();
   wb.classList.add('show');
   $('reader').style.display = 'none';
@@ -6235,27 +6662,69 @@ async function showLibrary() {
 
 function renderLibrary() {
   const wb = $('wordbook');
+  const cur = S.curFolder || '__all__';
+
+  // 顶部：文件夹切换条
   let html = '<div class="lib">';
   html += '<div class="lib-head"><div class="lib-title">我的文档</div>' +
           '<div class="lib-stat">共 ' + S.docList.length + ' 份</div>' +
           '<div class="lib-spacer"></div>' +
           '<button class="btn" id="btnLibClose">返回阅读</button>' +
+          '<button class="btn" id="btnLibFolder">新建文件夹</button>' +
           '<button class="btn primary" id="btnLibImport">导入新文档</button></div>';
-  if (!S.docList.length) {
-    html += '<div class="empty"><span class="big">📂</span>还没有文档<br>点「导入新文档」开始</div>';
+
+  // 文件夹标签
+  html += '<div class="folder-tabs">';
+  const cntAll = S.docList.length;
+  html += folderTab('__all__', '全部', cntAll, cur);
+  S.folders.forEach(f => {
+    const n = S.docList.filter(d => d.folder === f.id).length;
+    html += folderTab(f.id, f.name, n, cur);
+  });
+  const nNone = S.docList.filter(d => !d.folder).length;
+  if (S.folders.length) html += folderTab('__none__', '未分类', nNone, cur);
+  html += '</div>';
+
+  // 当前文件夹的操作条
+  if (cur !== '__all__' && cur !== '__none__') {
+    const f = S.folders.find(x => x.id === cur);
+    if (f) {
+      html += '<div class="folder-bar">' +
+        '<span class="fb-name">📁 ' + esc(f.name) + '</span>' +
+        '<button class="btn sm" id="fbRename">改名</button>' +
+        '<button class="btn sm" id="fbDelete">删除文件夹</button>' +
+        '</div>';
+    }
+  }
+
+  // 列出文档
+  const list = S.docList.filter(d => {
+    if (cur === '__all__') return true;
+    if (cur === '__none__') return !d.folder;
+    return d.folder === cur;
+  });
+
+  if (!list.length) {
+    html += '<div class="empty"><span class="big">📂</span>' +
+      (S.docList.length ? '这个文件夹还是空的' : '还没有文档<br>点「导入新文档」开始') +
+      '</div>';
   } else {
-    S.docList.forEach(function (d) {
+    list.forEach(function (d) {
       const date = new Date(d.updatedAt || 0);
       const ds = date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const folderName = d.folder ? (S.folders.find(f => f.id === d.folder) || {}).name : '';
       html += '<div class="lib-item" data-id="' + esc(d.id) + '">' +
         '<div class="lib-main">' +
           '<div class="lib-name" data-act="name" title="' + esc(d.name) + '">' + esc(d.name) +
-            (d.edited ? '<span class="lib-badge">已编辑</span>' : '') + '</div>' +
+            (d.edited ? '<span class="lib-badge">已编辑</span>' : '') +
+            (folderName && cur === '__all__' ? '<span class="lib-folder">📁 ' + esc(folderName) + '</span>' : '') +
+          '</div>' +
           '<div class="lib-meta">' + d.stats.blocks + ' 块 · ' + d.stats.sentences + ' 句 · ' + ds + '</div>' +
         '</div>' +
         '<div class="lib-actions">' +
           '<button class="btn sm" data-act="open">打开</button>' +
           '<button class="btn sm" data-act="rename">改名</button>' +
+          '<button class="btn sm" data-act="move">归类</button>' +
           '<button class="btn sm" data-act="del">删除</button>' +
         '</div></div>';
     });
@@ -6263,6 +6732,7 @@ function renderLibrary() {
   html += '</div>';
   wb.innerHTML = html;
 
+  // ---------- 绑定 ----------
   const close = $('btnLibClose');
   if (close) close.addEventListener('click', function () {
     wb.classList.remove('show');
@@ -6273,7 +6743,44 @@ function renderLibrary() {
   const imp = $('btnLibImport');
   if (imp) imp.addEventListener('click', function () { $('fileInput').click(); });
 
+  const bf = $('btnLibFolder');
+  if (bf) bf.addEventListener('click', async function () {
+    const name = await askText('新建文件夹', '', '比如：六级真题、雅思、阅读外刊');
+    if (name === null) return;
+    const f = await createFolder(name);
+    if (f) { S.curFolder = f.id; renderLibrary(); toast('已新建「' + f.name + '」'); }
+  });
+
+  // 文件夹标签点击
+  wb.querySelectorAll('.folder-tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      S.curFolder = t.dataset.f;
+      renderLibrary();
+    });
+  });
+
+  const fr = $('fbRename');
+  if (fr) fr.addEventListener('click', () => renameFolder(cur));
+  const fd = $('fbDelete');
+  if (fd) fd.addEventListener('click', () => deleteFolder(cur));
+
+  // 文档操作
   wb.querySelectorAll('.lib-item').forEach(function (it) {
+    it.querySelector('[data-act="name"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
+      if (rec) showFullName(rec);
+    });
+    it.querySelector('[data-act="rename"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
+      if (rec) renameDoc(rec);
+    });
+    it.querySelector('[data-act="move"]').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
+      if (rec) pickFolderForDoc(rec);
+    });
     it.querySelector('[data-act="open"]').addEventListener('click', function (e) {
       e.stopPropagation();
       openDocById(it.dataset.id).then(function () {
@@ -6283,27 +6790,49 @@ function renderLibrary() {
         S.wbOpen = false;
       });
     });
-    // 点标题：名字太长放不下时，弹出来看全名
-    it.querySelector('[data-act="name"]').addEventListener('click', function (e) {
-      e.stopPropagation();
-      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
-      if (rec) showFullName(rec);
-    });
-    // 改名
-    it.querySelector('[data-act="rename"]').addEventListener('click', function (e) {
-      e.stopPropagation();
-      const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
-      if (rec) renameDoc(rec);
-    });
     it.querySelector('[data-act="del"]').addEventListener('click', function (e) {
       e.stopPropagation();
       const rec = S.docList.find(function (d) { return d.id === it.dataset.id; });
-      if (rec) { askConfirm('删除文档', '确定删除「' + rec.name + '」？删除后无法恢复。', '删除', '取消').then(function(ok){ if (ok) deleteDoc(it.dataset.id); }); }
+      if (rec) {
+        askConfirm('删除文档', '确定删除「' + rec.name + '」？删除后无法恢复。', '删除', '取消')
+          .then(function (ok) { if (ok) deleteDoc(it.dataset.id); });
+      }
     });
   });
 }
 
-// 重命名文档
+function folderTab(id, name, count, cur) {
+  return '<div class="folder-tab' + (cur === id ? ' on' : '') + '" data-f="' + esc(id) + '">' +
+    esc(name) + '<span class="ft-n">' + count + '</span></div>';
+}
+
+// 选择要把文档放进哪个文件夹
+function pickFolderForDoc(rec) {
+  const dlg = document.createElement('div');
+  dlg.className = 'modal show';
+  let opts = '<button class="btn" data-f="">未分类</button>';
+  S.folders.forEach(f => {
+    opts += '<button class="btn" data-f="' + esc(f.id) + '">📁 ' + esc(f.name) + '</button>';
+  });
+  dlg.innerHTML =
+    '<div class="modal-box">' +
+      '<div class="modal-title">把「' + esc(rec.name) + '」归到</div>' +
+      '<div class="pick-folder-list">' + opts + '</div>' +
+      '<div class="modal-actions"><button class="btn" id="pfCancel">取消</button></div>' +
+    '</div>';
+  document.body.appendChild(dlg);
+
+  const close = () => dlg.remove();
+  dlg.addEventListener('click', e => { if (e.target === dlg) close(); });
+  dlg.querySelector('#pfCancel').addEventListener('click', close);
+  dlg.querySelectorAll('[data-f]').forEach(b => {
+    b.addEventListener('click', () => {
+      close();
+      moveDocToFolder(rec.id, b.dataset.f || null);
+    });
+  });
+}
+
 async function renameDoc(rec) {
   const name = await askText('重命名', rec.name, '最多 80 个字符');
   if (name === null) return;                       // 取消
@@ -6648,8 +7177,11 @@ async function lookupByAI(key, shown) {
     S.onlineDict = S.onlineDict || {};
     S.onlineDict[key] = data;
     try {
-      await dbPut('onlineDict', { key: 'od:' + key, payload: data });
-    } catch (e) { /* 存不下就算了 */ }
+      // 和免费查询用同一张表、同一个前缀，loadOnlineDict 才读得到
+      await dbPut('words', { key: '__od__' + key, payload: data, ts: Date.now() });
+    } catch (e) {
+      console.warn('AI 词条保存失败', e);
+    }
 
     const card = $('wordCard');
     const saved = S.words.get(key);
@@ -6755,7 +7287,7 @@ function renderOnlineEntry(card, key, shown, data, saved) {
   if (data.forms && data.forms.length) {
     extra.push(`<div class="rel-row"><span class="rel-label">变形</span>
       <span class="rel-items">${data.forms.map(w =>
-        `<span class="rel-w">${esc(w)}</span>`).join('')}</span></div>`);
+        `<span class="rel-w" data-rel="${esc(w)}">${esc(w)}</span>`).join('')}</span></div>`);
   }
   if (data.syn && data.syn.length) {
     extra.push(`<div class="rel-row"><span class="rel-label">同义词</span>
@@ -6769,7 +7301,9 @@ function renderOnlineEntry(card, key, shown, data, saved) {
   }
   if (extra.length) html += '<div class="rel-box">' + extra.join('') + '</div>';
 
-  html += `<div class="online-tip">来源：在线词典 · 已存入本地，离线可用</div>`;
+  html += `<div class="online-tip">来源：` +
+    (data.fromAI ? 'AI 补全（可能有误，仅供参考）' : '在线词典') +
+    ` · 已存入本地，离线可用</div>`;
 
   card.innerHTML = html;
   bindStar(key, data.headword || shown, {
@@ -8581,8 +9115,10 @@ async function boot() {
     memoryFallback = true;
     console.warn('IndexedDB 不可用，已降级为内存存储（关闭页面后丢失）：', err && err.message);
   });
+  loadUiPrefs();
   await loadWords();
   await loadDocList();
+  await loadFolders();
   await loadOnlineDict();
 
   // 若有已下载的更新，立即切换（会替换整个页面）
@@ -8781,11 +9317,26 @@ window.__APP__ = {
   openSettings: openSettings,
   itemText: itemText,
   translateBlock: translateBlock,
+  renderTrFor: renderTrFor,
+  renderParaTr: renderParaTr,
   enterPickMode: enterPickMode,
   exitPickMode: exitPickMode,
   renderDoc: renderDoc,
   aiToOnlineShape: aiToOnlineShape,
   translateSentenceText: translateSentenceText,
+  translateOne: translateOne,
+  renderParaTr: renderParaTr,
+  loadWords: loadWords,
+  loadOnlineDict: loadOnlineDict,
+  loadFolders: loadFolders,
+  createFolder: createFolder,
+  deleteFolder: deleteFolder,
+  renameFolder: renameFolder,
+  showLibrary: showLibrary,
+  filterWordsByScope: filterWordsByScope,
+  renderWordbook: renderWordbook,
+  moveDocToFolder: moveDocToFolder,
+  renderOnlineEntry: renderOnlineEntry,
   // 更新模块（调试用）
   compareVersion: compareVersion,
   showDlBar: showDlBar,
@@ -8812,6 +9363,13 @@ window.exitPickMode = exitPickMode;
 window.translateBlock = translateBlock;
 window.renderDoc = renderDoc;
 window.translateSentenceText = translateSentenceText;
+window.renderTrFor = renderTrFor;
+window.translateOne = translateOne;
+window.loadWords = loadWords;
+window.loadOnlineDict = loadOnlineDict;
+window.renderOnlineEntry = renderOnlineEntry;
+window.saveUiPrefs = saveUiPrefs;
+window.loadUiPrefs = loadUiPrefs;
 window.aiToOnlineShape = aiToOnlineShape;
 
 })();
