@@ -220,7 +220,7 @@ body.no-scroll-body {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 5px;
-  opacity: 0;
+  opacity: .6;
   transition: .15s;
 }
 .sent:hover .tr-btn { opacity: 1; }
@@ -423,7 +423,7 @@ body.no-scroll-body {
   margin-left: 3px;
   vertical-align: middle;
   cursor: pointer;
-  opacity: 0;
+  opacity: .55;
   transition: .15s;
   font-family: inherit;
   user-select: none;
@@ -441,11 +441,12 @@ body.no-scroll-body {
 @media (max-width: 640px) {
   .sent.inline .tr-mini,
   .sent.inline .spk-wrap {
-    opacity: .75;
+    opacity: .9;
     font-size: 11px;
     padding: 3px 7px;
     margin-left: 4px;
   }
+  .tr-btn { opacity: .85; }
 }
 
 /* 段落内的译文加载/失败提示 */
@@ -2161,6 +2162,20 @@ body.pick-mode .w:hover { background: none; }
   max-width: 220px;
 }
 
+/* 复习来源筛选 */
+.rv-scope-row { align-items: center; }
+.rv-scope {
+  padding: 7px 11px;
+  font-size: 12.5px;
+  border: 1.5px solid #d8dee9;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  max-width: 100%;
+  min-width: 160px;
+}
+
 </style>
 </head>
 <body>
@@ -2339,7 +2354,7 @@ body.pick-mode .w:hover { background: none; }
   <div id="loadingText">正在解析文档…</div>
 </div>
 
-<script>window.__APP_VERSION__ = '1.7.0';</script>
+<script>window.__APP_VERSION__ = '1.7.1';</script>
 <script id="pdfWorkerSrc" type="text/x-pdf-worker">
 /**
  * @licstart The following is the entire license notice for the
@@ -4227,7 +4242,7 @@ const DB_NAME = 'cet6-reader';
 const DB_VER = 2;
 let db = null;
 let memoryFallback = false;   // IndexedDB 不可用时降级为内存
-const memStore = { words: new Map(), docs: new Map() };
+const memStore = { words: new Map(), docs: new Map(), meta: new Map() };
 
 function openDB() {
   return new Promise((res, rej) => {
@@ -4273,6 +4288,7 @@ function dbGetAll(storeName) {
   if (memoryFallback) {
     if (storeName === 'words') return Promise.resolve([...memStore.words.values()]);
     if (storeName === 'docs') return Promise.resolve([...memStore.docs.values()]);
+    if (storeName === 'meta') return Promise.resolve([...memStore.meta.values()]);
     return Promise.resolve([]);
   }
   return new Promise((res, rej) => {
@@ -4285,8 +4301,13 @@ function dbGetAll(storeName) {
 function dbPut(storeName, value) {
   if (memoryFallback) {
     if (storeName === 'words') memStore.words.set(value.key, value);
+    else if (storeName === 'meta') memStore.meta.set(value.k || value.key, value);
     else memStore.docs.set(value.id, value);
     return Promise.resolve();
+  }
+  // meta 表的 keyPath 是 'k'，这里做一次兜底，避免调用方写成 key 就存不进去
+  if (storeName === 'meta' && value && value.k === undefined && value.key !== undefined) {
+    value = Object.assign({}, value, { k: value.key });
   }
   return new Promise((res, rej) => {
     const r = tx(storeName, 'readwrite').put(value);
@@ -4298,6 +4319,7 @@ function dbPut(storeName, value) {
 function dbDel(storeName, key) {
   if (memoryFallback) {
     if (storeName === 'words') memStore.words.delete(key);
+    else if (storeName === 'meta') memStore.meta.delete(key);
     else memStore.docs.delete(key);
     return Promise.resolve();
   }
@@ -4309,6 +4331,12 @@ function dbDel(storeName, key) {
 }
 
 function dbGet(storeName, key) {
+  if (memoryFallback) {
+    if (storeName === 'meta') return Promise.resolve(memStore.meta.get(key) || null);
+    if (storeName === 'words') return Promise.resolve(memStore.words.get(key) || null);
+    if (storeName === 'docs') return Promise.resolve(memStore.docs.get(key) || null);
+    return Promise.resolve(null);
+  }
   return new Promise((res, rej) => {
     const r = tx(storeName).get(key);
     r.onsuccess = () => res(r.result);
@@ -6531,7 +6559,8 @@ async function loadFolders() {
 
 async function saveFolders() {
   try {
-    await dbPut('meta', { key: 'folders', value: S.folders });
+    const rec = await dbGet('meta', 'folders');
+    await dbPut('meta', { k: 'folders', value: S.folders, at: (rec && rec.at) || Date.now() });
   } catch (e) { console.warn('文件夹保存失败', e); }
 }
 
@@ -7875,8 +7904,10 @@ function startReviewUI() {
   renderReviewSetup();
 }
 
-function reviewPool() {
-  return [...S.words.values()].filter(w => w.meaning);
+function reviewPool(filter) {
+  let rows = [...S.words.values()].filter(w => w.meaning);
+  const f = filter || S.rvFilter || '__all__';
+  return filterWordsByScope(rows, f);
 }
 
 // ============ 记忆等级与艾宾浩斯间隔 ============
@@ -7936,6 +7967,44 @@ function restoreMem() {
   } catch (e) { S.mem = {}; }
 }
 
+// 复习的来源筛选下拉
+function rvScopeSelect() {
+  const cur = S.rvFilter || '__all__';
+  let opts = '<option value="__all__">全部单词</option>';
+
+  const usedFolders = new Set();
+  S.words.forEach(r => { if (r.source && r.source.folder) usedFolders.add(r.source.folder); });
+  const folders = S.folders.filter(f => usedFolders.has(f.id));
+  if (folders.length) {
+    opts += '<optgroup label="按文件夹">';
+    folders.forEach(f => {
+      const n = filterWordsByScope([...S.words.values()], 'f:' + f.id).length;
+      opts += '<option value="f:' + esc(f.id) + '">📁 ' + esc(f.name) + '（' + n + '）</option>';
+    });
+    opts += '</optgroup>';
+  }
+
+  const usedDocs = new Set();
+  S.words.forEach(r => { if (r.source && r.source.doc) usedDocs.add(r.source.doc); });
+  if (usedDocs.size) {
+    opts += '<optgroup label="按文档/图片">';
+    [...usedDocs].sort().forEach(n => {
+      const d = S.docList.find(x => x.name === n);
+      const val = d ? ('d:' + d.id) : ('dname:' + n);
+      const cnt = filterWordsByScope([...S.words.values()], val).length;
+      opts += '<option value="' + esc(val) + '">' + esc(n) + '（' + cnt + '）</option>';
+    });
+    opts += '</optgroup>';
+  }
+
+  let html = opts;
+  if (cur && cur !== '__all__') {
+    const q = 'value="' + String(cur).replace(/"/g, '&quot;') + '"';
+    html = html.replace(q, q + ' selected');
+  }
+  return '<select id="rvScope" class="rv-scope">' + html + '</select>';
+}
+
 // ============ 复习设置页 ============
 function renderReviewSetup() {
   const wb = $('wordbook');
@@ -7965,6 +8034,12 @@ function renderReviewSetup() {
           <div class="rv-opts" id="rvStyle">
             <button class="rv-chip" data-s="choice">选择题</button>
             <button class="rv-chip" data-s="card">卡片（认识/不熟）</button>
+          </div>
+        </div>
+        <div class="rv-row">
+          <label class="rv-label">来源</label>
+          <div class="rv-opts rv-scope-row">
+            ${rvScopeSelect()}
           </div>
         </div>
         <div class="rv-row">
@@ -8008,6 +8083,15 @@ function renderReviewSetup() {
     </div>`;
 
   $('rvBack').addEventListener('click', backToReader);
+
+  // 来源筛选：切换后重新渲染（可选数量会变）
+  const scopeSel = $('rvScope');
+  if (scopeSel) {
+    scopeSel.addEventListener('change', () => {
+      S.rvFilter = scopeSel.value;
+      renderReviewSetup();
+    });
+  }
 
   if (total < 4) return;
 
@@ -9335,6 +9419,10 @@ window.__APP__ = {
   showLibrary: showLibrary,
   filterWordsByScope: filterWordsByScope,
   renderWordbook: renderWordbook,
+  renderReviewSetup: renderReviewSetup,
+  reviewPool: reviewPool,
+  rvScopeSelect: rvScopeSelect,
+  dbGet: dbGet,
   moveDocToFolder: moveDocToFolder,
   renderOnlineEntry: renderOnlineEntry,
   // 更新模块（调试用）
